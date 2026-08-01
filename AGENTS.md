@@ -62,7 +62,9 @@ src/google-client.ts  Search Console HTTP calls, pagination, error sanitisation.
 src/server.ts         MCP tool registration and stdio entrypoint.
 src/*.test.ts         Tests live next to the module they cover. There is no test/ directory.
 bin/search-console-mcp  Self-locating POSIX wrapper every host launches.
-skills/               Product skill shipped to end users. Read by both plugin hosts.
+skills/search-console/        Product skill: how to query Search Console safely.
+skills/content-opportunities/ Product skill: the weekly content loop (propose/outcome/reflect).
+docs/codex-setup.md           Codex install, cachebuster flow, and scheduled tasks.
 .agent/skills/        Agent skills for working on this repo. Not shipped.
 ```
 
@@ -92,6 +94,14 @@ Constraints behind that split:
 - Claude Code also puts `bin/` on the Bash tool's `PATH` when the plugin is enabled.
 
 Keep `version` in both manifests in step with `package.json`.
+
+`codex plugin add` copies the plugin into a version-keyed cache
+(`~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/`), including `dist/` and
+`node_modules/`. That snapshot is what Codex runs, so editing the checkout changes nothing
+until you `npm run build`, bump `version`, and re-add. See `docs/codex-setup.md`.
+
+The Codex personal marketplace only accepts a `./`-relative `source.path`; an absolute path
+loads the marketplace but silently hides the plugin.
 
 ## Secret providers
 
