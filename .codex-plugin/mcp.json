@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "search-console": {
+      "command": "./bin/search-console-mcp",
+      "cwd": ".",
+      "env_vars": [
+        "GSC_SECRET_PROVIDER",
+        "GSC_OAUTH_CLIENT_FILE",
+        "GSC_TOKEN_FILE",
+        "GSC_CLIENT_ID",
+        "GSC_CLIENT_SECRET",
+        "GSC_SECRET_DOTENV_PATH",
+        "GSC_SECRET_OP_VAULT",
+        "GSC_SECRET_OP_ITEM"
+      ]
+    }
+  }
+}

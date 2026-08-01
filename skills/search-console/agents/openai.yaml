@@ -1,0 +1,4 @@
+interface:
+  display_name: "Google Search Console"
+  short_description: "Analyze and inspect Search Console data"
+  default_prompt: "Use $search-console to analyze my Google Search Console performance."

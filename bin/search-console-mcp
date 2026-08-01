@@ -1,0 +1,18 @@
+#!/bin/sh
+# Launches the stdio MCP server. Self-locating, so it works when invoked by
+# absolute path, from any working directory, or via a plugin host.
+set -eu
+
+PLUGIN_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+
+if [ ! -d "$PLUGIN_DIR/node_modules" ]; then
+  echo "Search Console MCP has no dependencies installed. Run: (cd $PLUGIN_DIR && npm ci && npm run build)" >&2
+  exit 1
+fi
+
+if [ ! -f "$PLUGIN_DIR/dist/src/server.js" ]; then
+  echo "Search Console MCP is not built. Run: (cd $PLUGIN_DIR && npm run build)" >&2
+  exit 1
+fi
+
+exec node "$PLUGIN_DIR/dist/src/server.js"

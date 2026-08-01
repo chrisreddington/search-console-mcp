@@ -1,0 +1,21 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Environment files. .env.example is the only one that may be committed.
+.env
+.env.*
+!.env.example
+
+# Credential and token material, matched anywhere in the name so a personal
+# filename such as my-token.json or gsc-secrets.json cannot slip through.
+*credential*.json
+*client_secret*.json
+*token*.json
+*oauth*.json
+*secret*.json
+*.pem
+*.p12
+
+# macOS
+.DS_Store

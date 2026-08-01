@@ -1,0 +1,51 @@
+name: Continuous Integration
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Format, typecheck, and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        id: setup-node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        id: npm-ci
+        run: npm ci
+
+      - name: Check format
+        id: format-check
+        run: npm run format:check
+
+      - name: Typecheck
+        id: typecheck
+        run: npm run typecheck
+
+      - name: Test
+        id: test
+        run: npm test
+
+      - name: Audit dependencies
+        id: audit
+        run: npm audit --audit-level=high

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "search-console-mcp",
+  "displayName": "Google Search Console",
+  "version": "0.1.0",
+  "description": "Read-only Google Search Console performance analysis and URL inspection.",
+  "author": {
+    "name": "Chris Reddington"
+  },
+  "homepage": "https://github.com/chrisreddington/search-console-mcp#readme",
+  "repository": "https://github.com/chrisreddington/search-console-mcp",
+  "license": "MIT",
+  "keywords": ["seo", "search-console", "google", "analytics", "mcp"]
+}

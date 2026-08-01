@@ -1,0 +1,25 @@
+{
+  "name": "search-console-mcp",
+  "version": "0.1.0",
+  "description": "Read-only Google Search Console analysis and URL inspection for Codex.",
+  "author": {
+    "name": "Chris Reddington"
+  },
+  "repository": "https://github.com/chrisreddington/search-console-mcp",
+  "license": "MIT",
+  "keywords": ["seo", "search-console", "google", "analytics", "mcp"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Google Search Console",
+    "shortDescription": "Analyze search performance and indexing.",
+    "longDescription": "Query Google Search Console performance, sites, sitemaps, and indexed URL status through a local read-only MCP server.",
+    "developerName": "Chris Reddington",
+    "category": "Developer Tools",
+    "capabilities": ["Read"],
+    "defaultPrompt": [
+      "Analyze my Search Console performance and recommend priorities.",
+      "Inspect a URL and explain its indexing status."
+    ]
+  },
+  "mcpServers": "./.codex-plugin/mcp.json"
+}
