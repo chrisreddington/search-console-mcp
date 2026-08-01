@@ -8,8 +8,9 @@ description: Turn Google Search Console evidence into a small set of actionable 
 Produce a short, evidence-backed set of content proposals for one Search Console property,
 record the verdict on each, and later measure whether what shipped actually earned traffic.
 
-The value of this skill is restraint. Three good proposals a human acts on beat twenty they
-ignore. **A run that proposes nothing is a successful run.**
+The value of this skill is restraint: three good proposals a human acts on beat twenty they
+ignore. Restraint means proposing few things, **not** refusing to run. Missing guardrails
+and a full backlog change how a run is framed; they never cancel it.
 
 ## Modes
 
@@ -29,16 +30,23 @@ Pick the mode from the request. Default to `propose`.
    2–3 day lag). `current = the 28 days ending at end`. `prior = the 28 days immediately
 before current`. Never widen, narrow, or shift these to make a finding look better —
    run-to-run comparability is the point.
-3. Ledger lives in the content repo at `.agents/content-loop/`. Read `topics.md` before
-   proposing anything; it defines current focus areas and explicit anti-topics.
+3. Ledger lives in the content repo at `.agents/content-loop/`. Read `topics.md` for focus
+   areas and anti-topics. **If it is missing, still run.** Analyse and propose as normal,
+   lead the output with one line saying anti-topic filtering was not applied, and offer to
+   draft the file. A missing guardrail degrades confidence; it does not stop the run.
 4. Read [ledger-schema.md](references/ledger-schema.md) before writing any ledger line, and
    [analysis-recipes.md](references/analysis-recipes.md) for the exact queries per mode.
+5. **Never end a run having produced nothing.** If something genuinely blocks proposals,
+   still report the property totals and what you found, then say precisely what is needed.
+   Silence is a failure mode, not a safe default.
 
 ## Mode: propose
 
-1. **Check backpressure first.** Count open issues labelled `content-proposal`. If more
-   than 8 are open, propose nothing. Instead, name the stalest 2–3 and recommend closing
-   them. Say plainly that the backlog is the constraint, not the ideas.
+1. **Note backlog pressure — it is advisory, never a stop.** Count open issues labelled
+   `content-proposal`. Count only that label: unrelated issues in the repo are not this
+   loop's backlog and must not affect the run. If more than 8 are open, still propose, but
+   lead with one line naming the count and the stalest 2–3 worth closing, and prefer your
+   highest-confidence items. Never reduce the run to a refusal.
 2. Pull property totals for `current` and `prior`. This is context, not a finding.
 3. Work the opportunity classes in [analysis-recipes.md](references/analysis-recipes.md).
 4. Filter every candidate against `topics.md`. An anti-topic match is dropped silently —
@@ -47,7 +55,8 @@ before current`. Never widen, narrow, or shift these to make a finding look bett
    no new content on that subject, while cheap fixes to existing pages stay in scope.
    Apply the stated scope exactly; do not widen it to a blanket ban.
 5. Keep at most **3** proposals, ranked by expected value, each with a distinct action.
-   Fewer is fine. Zero is fine.
+   Fewer is fine. Zero is fine only when the data genuinely offers nothing worth acting
+   on — and then say what you checked, so "nothing" is a finding rather than a shrug.
 6. Present them in chat in the format below and **stop for discussion**. Do not create
    issues yet.
 7. After the human responds, create GitHub issues **only** for what they accepted, and
@@ -96,7 +105,11 @@ Never infer an outcome you did not measure. If a page has too little data, recor
 
 ## Rules
 
-- Three proposals maximum. Proposing nothing is a valid, successful outcome.
+- Three proposals maximum. Proposing nothing is valid **only when the data shows nothing
+  worth acting on** — never as a reaction to a missing file or a full backlog.
+- Every run produces something: proposals, or the totals plus what is needed to proceed.
+- Missing or malformed `topics.md` degrades the run to unfiltered, clearly labelled. It
+  never halts it.
 - Never create a GitHub issue before the human has agreed to that specific proposal.
 - Treat CTR as a query-mix metric. Losing low-CTR impressions raises CTR while traffic
   falls, so never report a CTR rise as improvement without checking clicks and impressions.
@@ -114,9 +127,11 @@ Never infer an outcome you did not measure. If a page has too little data, recor
 
 ## Checklist
 
-- Backpressure checked before any analysis; proposal count is 3 or fewer.
+- The run produced something useful; it did not end in a refusal.
+- Backlog pressure was reported as advice, counting only `content-proposal` issues.
 - Every proposal has a stable ID, a class, dated evidence, and a falsifiable confidence.
-- Every candidate was checked against `topics.md` anti-topics.
+- Every candidate was checked against `topics.md` anti-topics, or the output states plainly
+  that the file was missing and filtering was skipped.
 - No issue was created without explicit agreement in the conversation.
 - Every proposal, including rejected ones, has a `proposals.jsonl` row with a verdict.
 - Outcome rows contain measured numbers only; unmeasurable items are `insufficient-data`.
