@@ -4,10 +4,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { createAuthorizedClient } from "./auth.js";
-import { resolveTokenFile } from "./config.js";
+
 import { SearchConsoleClient } from "./google-client.js";
 import { resolveClientCredentials } from "./secrets.js";
-import { TokenStore } from "./token-store.js";
+import { createTokenStore } from "./token-store.js";
 
 const dimension = z.enum([
   "country",
@@ -163,7 +163,7 @@ async function result(operation: Promise<unknown>) {
 }
 
 async function main(): Promise<void> {
-  const tokenStore = new TokenStore(resolveTokenFile());
+  const tokenStore = createTokenStore();
   const credentials = await resolveClientCredentials();
   const auth = await createAuthorizedClient(credentials, tokenStore);
   const server = createServer(new SearchConsoleClient(auth, tokenStore));

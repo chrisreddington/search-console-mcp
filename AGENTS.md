@@ -113,6 +113,23 @@ placeholder value aborts startup. There is no silent fallback to a weaker provid
 `GSC_TOKEN_FILE` (default `~/.config/search-console-mcp/token.json`) is a _location_, not
 a secret, and is safe to name in error messages.
 
+## Token storage
+
+`GSC_TOKEN_PROVIDER` selects the `TokenStore` implementation: `file` (default, atomic
+`0600` write) or `1password` (a vault document via `op`). The refresh token is the real
+access grant, so it deserves at least the protection given to the client secret.
+
+Constraints that shaped the 1Password backend:
+
+- `op` probes stdin at startup and fails with "expected data on stdin but none found"
+  when spawned rather than shell-piped, so a document body cannot be piped from Node.
+- Passing the token as a command argument is not an option — arguments are readable by
+  any local process.
+- Hence a `0600` staging file in a `0700` temp directory, passed by path, then
+  overwritten and removed in a `finally`. Tests assert the staging file never survives,
+  including on failure, and that the token never appears in argv.
+- `CommandRunner` intentionally takes no stdin parameter; nothing can use it.
+
 ## Engineering expectations
 
 - stdout is the MCP transport. Diagnostics go to **stderr only** — a stray `console.log`

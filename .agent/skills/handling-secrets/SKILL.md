@@ -21,7 +21,8 @@ Keep OAuth client secrets and refresh tokens out of the repository, out of logs,
 - Fail closed: an unknown provider, a backend error, or an empty/placeholder value aborts startup. Never fall back to a weaker provider automatically.
 - Validate resolved values before use, and reject obvious template text (`your-`, `changeme`, `example`, …) so a copied sample fails at startup rather than at the first Google call.
 - Error messages may name environment variables, file paths, and CLI names. They must never include a credential value, a token, a raw file body, or the stdout of a secret CLI — those can echo the secret back.
-- Write token files atomically with mode `0600` inside a `0700` directory (`TokenStore`), and re-`chmod` after reads that may have loosened it.
+- Write token files atomically with mode `0600` inside a `0700` directory (`FileTokenStore`), and re-`chmod` after reads that may have loosened it.
+- Never hand a secret to a CLI as a command argument; argv is readable by any local process. Stage it in a `0600` file and pass the path, removing the file in a `finally`.
 - Request the narrowest scope: authorization is fixed to `webmasters.readonly`. Adding a write scope needs an explicit decision, not a convenience change.
 - Sample files (`.env.example`, `README.md`, `.mcp.json`) carry placeholders only. Keep credential globs in `.gitignore` covering any new filename you introduce.
 - Never write a secret to the repository working tree, including in tests. Tests use obvious fakes and OS temp directories.

@@ -1,6 +1,6 @@
 import type { OAuth2Client } from "google-auth-library";
 import { accessToken } from "./auth.js";
-import { TokenStore } from "./token-store.js";
+import type { TokenStore } from "./token-store.js";
 
 export interface SearchAnalyticsFilter {
   dimension: "country" | "device" | "page" | "query" | "searchAppearance";

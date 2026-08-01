@@ -1,10 +1,12 @@
 import { readFile } from "node:fs/promises";
-import { execFile } from "node:child_process";
 import { platform } from "node:os";
-import { promisify } from "node:util";
 import { expandPath } from "./config.js";
+import {
+  runCommand as defaultCommandRunner,
+  type CommandRunner,
+} from "./run-command.js";
 
-const execFileAsync = promisify(execFile);
+export type { CommandRunner };
 
 export const SECRET_PROVIDERS = [
   "file",
@@ -21,11 +23,6 @@ export interface OAuthClientCredentials {
   clientId: string;
   clientSecret: string;
 }
-
-export type CommandRunner = (
-  command: string,
-  args: readonly string[],
-) => Promise<string>;
 
 export interface SecretResolutionOptions {
   environment?: NodeJS.ProcessEnv;
@@ -366,26 +363,6 @@ function remedy(provider: SecretProvider): string {
 
 function asString(value: unknown): string {
   return typeof value === "string" ? value : "";
-}
-
-async function defaultCommandRunner(
-  command: string,
-  args: readonly string[],
-): Promise<string> {
-  try {
-    const { stdout } = await execFileAsync(command, [...args], {
-      encoding: "utf8",
-    });
-    return stdout;
-  } catch (error) {
-    if (isNodeError(error) && error.code === "ENOENT") {
-      throw new Error(
-        `The "${command}" CLI is not on PATH. Install it or choose a different GSC_SECRET_PROVIDER.`,
-      );
-    }
-    // Command output can contain secret material, so report only the exit failure.
-    throw new Error(`The "${command}" CLI exited with an error.`);
-  }
 }
 
 function defaultTextFileReader(path: string): Promise<string> {

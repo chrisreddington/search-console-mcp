@@ -4,15 +4,14 @@ import { platform } from "node:os";
 import { spawn } from "node:child_process";
 import { OAuth2Client } from "google-auth-library";
 import { READONLY_SCOPE } from "./auth.js";
-import { resolveTokenFile } from "./config.js";
 import { resolveClientCredentials } from "./secrets.js";
-import { TokenStore } from "./token-store.js";
+import { createTokenStore } from "./token-store.js";
 
 const CALLBACK_PATH = "/oauth2/callback";
 const AUTHORIZATION_TIMEOUT_MS = 5 * 60 * 1_000;
 
 async function authorize(): Promise<void> {
-  const tokenFile = resolveTokenFile();
+  const tokenStore = createTokenStore();
   const credentials = await resolveClientCredentials();
   const state = randomBytes(24).toString("hex");
   const callback = await createCallback(state);
@@ -42,9 +41,9 @@ async function authorize(): Promise<void> {
     );
   }
 
-  await new TokenStore(tokenFile).save(tokens);
+  await tokenStore.save(tokens);
   process.stderr.write(
-    `Authorization succeeded. Token stored privately at ${tokenFile}.\n`,
+    `Authorization succeeded. Token stored in ${tokenStore.description}.\n`,
   );
 }
 

@@ -29,7 +29,8 @@ npm run build
 
 `npm run auth` opens a browser, uses a loopback callback, and also prints the
 authorization URL to stderr so it works over SSH. It never prints credential or token
-contents, and writes the token atomically with mode `0600`.
+contents, and stores the resulting token through whichever backend
+[`GSC_TOKEN_PROVIDER`](#where-the-token-is-stored) names — by default a `0600` file.
 
 The clone must stay on disk and stay built — every host below launches the same
 self-locating `bin/search-console-mcp` wrapper out of this directory. Re-run
@@ -113,8 +114,37 @@ the variable, path, or CLI to fix — never the credential itself.
 See [.env.example](.env.example) for every variable, including the exact `security` and
 `secret-tool` commands for storing keychain entries.
 
+## Where the token is stored
+
+Authorization produces a refresh token, and that token — not the client secret — is
+the thing that actually grants access to your data. `GSC_TOKEN_PROVIDER` chooses where
+it lives:
+
+| `GSC_TOKEN_PROVIDER` | Storage                                         | Protection                        |
+| -------------------- | ----------------------------------------------- | --------------------------------- |
+| `file` (default)     | `GSC_TOKEN_FILE`, atomic write, mode `0600`     | Filesystem permissions only       |
+| `1password`          | A vault document, written and read through `op` | Vault encryption, unlock required |
+
+For the `1password` backend set `GSC_TOKEN_OP_ITEM` (default `Search Console Token`);
+the vault falls back to `GSC_SECRET_OP_VAULT`, so the common case needs no extra
+variable.
+
+```sh
+export GSC_TOKEN_PROVIDER=1password
+```
+
+Two honest caveats about the 1Password backend. `op` rejects a document body on stdin
+when it is spawned rather than shell-piped, so the token is staged in a `0600` file
+inside a `0700` temporary directory, passed to `op` by path, then overwritten and
+deleted — it touches the disk briefly, and on a copy-on-write filesystem that overwrite
+is best-effort. And every read and refresh needs the vault unlocked, so a locked
+1Password makes the server fail to start rather than fall back.
+
 `GSC_TOKEN_FILE` is a location rather than a secret; it defaults to
 `~/.config/search-console-mcp/token.json`.
+
+Deleting a stored token does not revoke anything. To actually revoke access, remove the
+app grant at [myaccount.google.com/permissions](https://myaccount.google.com/permissions).
 
 ### Examples
 

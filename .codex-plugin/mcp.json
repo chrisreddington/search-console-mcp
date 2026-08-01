@@ -11,7 +11,10 @@
         "GSC_CLIENT_SECRET",
         "GSC_SECRET_DOTENV_PATH",
         "GSC_SECRET_OP_VAULT",
-        "GSC_SECRET_OP_ITEM"
+        "GSC_SECRET_OP_ITEM",
+        "GSC_TOKEN_PROVIDER",
+        "GSC_TOKEN_OP_VAULT",
+        "GSC_TOKEN_OP_ITEM"
       ]
     }
   }
