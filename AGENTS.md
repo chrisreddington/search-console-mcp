@@ -140,6 +140,23 @@ Constraints that shaped the 1Password backend:
   including on failure, and that the token never appears in argv.
 - `CommandRunner` intentionally takes no stdin parameter; nothing can use it.
 
+## GUI hosts and PATH
+
+A GUI-launched host (Codex.app, Claude Desktop, Finder) never sources a shell profile, so
+its child processes inherit a minimal `PATH` — typically `/usr/bin:/bin:/usr/sbin:/sbin`.
+Homebrew's `bin` is absent, which makes `node`, `op`, and `doppler` all invisible. The
+symptom is a server that works from a terminal and fails only under the app.
+
+Both layers therefore resolve binaries themselves rather than trusting `PATH`:
+
+- `bin/search-console-mcp` locates `node` via PATH, then Homebrew, MacPorts, `~/.local/bin`,
+  Volta and nvm.
+- `src/run-command.ts` locates secret CLIs the same way and raises `CommandNotFoundError`,
+  which names every directory searched.
+
+Do not "simplify" either back to a bare `PATH` lookup. Fixing the user's shell profile does
+not help: the app is not a shell.
+
 ## Engineering expectations
 
 - stdout is the MCP transport. Diagnostics go to **stderr only** — a stray `console.log`

@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { platform } from "node:os";
 import { expandPath } from "./config.js";
 import {
+  CommandNotFoundError,
   runCommand as defaultCommandRunner,
   type CommandRunner,
 } from "./run-command.js";
@@ -198,8 +199,11 @@ async function fromOnePassword(
     ]);
   } catch (error) {
     const reason = error instanceof Error ? error.message : "unknown error";
+    // A missing CLI is a different problem from a vault that will not answer;
+    // appending item advice to a "not found" error sends people the wrong way.
+    if (error instanceof CommandNotFoundError) throw new Error(reason);
     throw new Error(
-      `${reason} Check that item "${item}" exists in vault "${vault}", and that 1Password's CLI integration is enabled (Settings > Developer > Integrate with 1Password CLI).`,
+      `${reason} Check that item "${item}" exists in vault "${vault}", that 1Password is unlocked, and that its CLI integration is enabled (Settings > Developer > Integrate with 1Password CLI). A background or scheduled run cannot answer an approval prompt, so authorise 1Password once interactively first.`,
     );
   }
 

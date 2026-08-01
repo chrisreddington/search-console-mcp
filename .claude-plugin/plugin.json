@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "search-console-mcp",
   "displayName": "Google Search Console",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Read-only Google Search Console performance analysis and URL inspection.",
   "author": {
     "name": "Chris Reddington"
