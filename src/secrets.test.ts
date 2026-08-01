@@ -163,6 +163,20 @@ const failureCases: FailureCase[] = [
     expected: /Add "client_id" and "client_secret" fields/,
   },
   {
+    name: "names the vault and item when the op CLI fails",
+    options: {
+      environment: {
+        GSC_SECRET_PROVIDER: "1password",
+        GSC_SECRET_OP_VAULT: "Private",
+        GSC_SECRET_OP_ITEM: "Search Console",
+      },
+      runCommand: async () => {
+        throw new Error('The "op" CLI exited with an error.');
+      },
+    },
+    expected: /item "Search Console" exists in vault "Private"/,
+  },
+  {
     name: "reports a doppler config missing the credentials",
     options: {
       environment: { GSC_SECRET_PROVIDER: "doppler" },

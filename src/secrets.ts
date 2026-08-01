@@ -185,15 +185,26 @@ async function fromOnePassword(
     );
   }
 
-  const output = await runCommand("op", [
-    "item",
-    "get",
-    "--vault",
-    vault,
-    "--format",
-    "json",
-    item,
-  ]);
+  // The runner deliberately discards op's output, which can contain field
+  // values, so name the vault and item here instead — neither is secret, and
+  // without them a typo is indistinguishable from a locked vault.
+  let output: string;
+  try {
+    output = await runCommand("op", [
+      "item",
+      "get",
+      "--vault",
+      vault,
+      "--format",
+      "json",
+      item,
+    ]);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "unknown error";
+    throw new Error(
+      `${reason} Check that item "${item}" exists in vault "${vault}", and that 1Password's CLI integration is enabled (Settings > Developer > Integrate with 1Password CLI).`,
+    );
+  }
 
   let parsed: OnePasswordItem;
   try {
