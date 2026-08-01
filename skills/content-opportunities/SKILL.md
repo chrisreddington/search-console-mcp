@@ -42,7 +42,10 @@ before current`. Never widen, narrow, or shift these to make a finding look bett
 2. Pull property totals for `current` and `prior`. This is context, not a finding.
 3. Work the opportunity classes in [analysis-recipes.md](references/analysis-recipes.md).
 4. Filter every candidate against `topics.md`. An anti-topic match is dropped silently —
-   do not propose it and then explain why you nearly did.
+   do not propose it and then explain why you nearly did. Entries may be **scoped to
+   specific opportunity classes**: an entry that blocks `gap` but allows `ctr-gap` means
+   no new content on that subject, while cheap fixes to existing pages stay in scope.
+   Apply the stated scope exactly; do not widen it to a blanket ban.
 5. Keep at most **3** proposals, ranked by expected value, each with a distinct action.
    Fewer is fine. Zero is fine.
 6. Present them in chat in the format below and **stop for discussion**. Do not create
@@ -103,7 +106,8 @@ Never infer an outcome you did not measure. If a page has too little data, recor
 - Do not compare differently aggregated requests. A page-grouped query and a property total
   are not the same measurement.
 - State the window on every finding. Undated numbers are unusable next week.
-- Anti-topics in `topics.md` are absolute. Do not relitigate them.
+- Anti-topics in `topics.md` are absolute within their stated class scope. Do not
+  relitigate them, and do not broaden a scoped entry into a blanket ban.
 - Never edit `topics.md`; it is human-owned. Propose changes instead.
 - Record every proposal in the ledger, including rejected ones. Rejections are the training
   signal — dropping them destroys the loop.

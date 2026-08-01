@@ -93,7 +93,12 @@ Field notes:
 Human-owned Markdown, never edited by the skill. Two sections that gate every proposal:
 
 - **Focus areas** — what to look for. Weight proposals matching these upward.
-- **Anti-topics** — what to never propose, with the reason. An anti-topic match is dropped
-  silently and is never relitigated.
+- **Anti-topics** — what to never propose, with the reason. A match is dropped silently and
+  never relitigated.
+
+An anti-topic entry may name **blocked classes** and **allowed classes**. "Blocked: `gap`,
+allowed: `ctr-gap`, `decay`" means write nothing new on that subject, but keep maintaining
+the pages that already exist — the common case for a subject you have moved on from that
+still earns impressions. Apply the scope exactly; never widen it to a blanket ban.
 
 `reflect` mode may _suggest_ edits in its PR description, but must not change the file.
