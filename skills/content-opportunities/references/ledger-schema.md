@@ -42,7 +42,7 @@ recorded too — rejections are the training signal.
 Field notes:
 
 - `id` — `P-<YYYYMMDD>-<n>`, unique forever. Outcomes join on it.
-- `class` — one of `ctr-gap`, `near-miss`, `gap`, `decay`.
+- `class` — one of `ctr-gap`, `near-miss`, `gap`, `decay`, `focus-area`.
 - `evidence` — paired arrays are always `[prior, current]`. Keep both windows so a later
   run can tell whether the evidence itself was sound.
 - `verdict` — `accepted`, `rejected`, `deferred`, or `pending` until the human responds.

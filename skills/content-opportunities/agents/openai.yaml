@@ -1,0 +1,4 @@
+interface:
+  display_name: "Content opportunities"
+  short_description: "Measure shipped content and propose Search Console improvements"
+  default_prompt: "Use $content-opportunities in propose mode for my property."

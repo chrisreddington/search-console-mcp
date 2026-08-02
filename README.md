@@ -4,6 +4,7 @@ A local, read-only Google Search Console MCP server and Codex skill. It supports
 
 - listing accessible Search Console properties;
 - Search Analytics dimensions, filters, date ranges, and explicit pagination;
+- comparing two date windows for one grain, with coverage metadata;
 - listing submitted sitemaps; and
 - inspecting Google's indexed version of a URL.
 
@@ -172,14 +173,26 @@ Deleting the token file does not revoke anything. To revoke access, remove the a
 
 ## Tools
 
-| Tool                         | Purpose                                                         |
-| ---------------------------- | --------------------------------------------------------------- |
-| `gsc_list_sites`             | List properties available to the authenticated account          |
-| `gsc_query_search_analytics` | Query Search Analytics with dimensions, filters, and pagination |
-| `gsc_list_sitemaps`          | List submitted sitemaps for a property                          |
-| `gsc_inspect_url`            | Inspect Google's indexed version of a URL (not a live test)     |
+| Tool                           | Purpose                                                         |
+| ------------------------------ | --------------------------------------------------------------- |
+| `gsc_list_sites`               | List properties available to the authenticated account          |
+| `gsc_query_search_analytics`   | Query Search Analytics with dimensions, filters, and pagination |
+| `gsc_compare_search_analytics` | Compare two windows for one grain, with coverage metadata       |
+| `gsc_list_sitemaps`            | List submitted sitemaps for a property                          |
+| `gsc_inspect_url`              | Inspect Google's indexed version of a URL (not a live test)     |
 
-All four are annotated `readOnlyHint: true`.
+All five are annotated `readOnlyHint: true`.
+
+`gsc_compare_search_analytics` retrieves both windows, union-joins them by dimension key,
+and returns `current`, `prior`, and `delta` metrics per row. Metric filtering, sorting, and
+the row limit run **after** retrieval, and each retrieval is cached for the session, so
+re-analysing one grain with different thresholds costs no further API requests.
+
+`retrievalMode: "daily"` issues one paginated request per day and aggregates locally, which
+widens the row budget at the cost of locally derived metrics; `"range"` (the default) lets
+Google aggregate the window. Do not mix figures from the two. Every response carries a
+`coverage` block: `rowCapReached: true` proves truncation, but `false` does not prove
+completeness, because Search Analytics returns click-sorted top rows with no true total.
 
 ## Development
 

@@ -62,7 +62,9 @@ npm run build                                    # cache copies dist/, so build 
 ```
 
 Keep `version` in step across `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`,
-and `package.json`.
+`package.json`, and `package-lock.json`. Two literals in the source carry it too, and a
+stale one shows up as the wrong identity in a client's tool list: the `McpServer` version
+in `src/server.ts`, and the client version in `src/one-password.ts`.
 
 ## Scheduled tasks
 
@@ -74,15 +76,18 @@ Create these from the **Scheduled** page in the ChatGPT desktop app. Set project
 content repo and run in your **local environment**, not a worktree — the run needs your
 real environment for `op` (1Password) and for ledger writes.
 
-| Task                  | Cadence   | Create it                   | Prompt                                                                                     |
-| --------------------- | --------- | --------------------------- | ------------------------------------------------------------------------------------------ |
-| Content opportunities | Weekly    | **Inside an existing chat** | `Run the content-opportunities skill in propose mode for sc-domain:chrisreddington.com.`   |
-| Outcome measurement   | Monthly   | Standalone                  | `Run the content-opportunities skill in outcome mode.`                                     |
-| Method reflection     | Quarterly | Standalone                  | `Run the content-opportunities skill in reflect mode and open a PR with proposed changes.` |
+| Task              | Cadence   | Create it                   | Prompt                                                                                     |
+| ----------------- | --------- | --------------------------- | ------------------------------------------------------------------------------------------ |
+| Content loop      | Weekly    | **Inside an existing chat** | `Run the content-opportunities skill in propose mode for sc-domain:chrisreddington.com.`   |
+| Method reflection | Quarterly | Standalone                  | `Run the content-opportunities skill in reflect mode and open a PR with proposed changes.` |
 
 The weekly task must be created **inside a chat** ("schedule a task inside that chat"), so
-each run continues the same thread and your replies accumulate as context. A standalone
-task starts a new chat every run, which is what you want for the other two.
+each run continues the same thread and your replies accumulate as context. It scans for due
+outcomes before proposing new work. An accepted, shipped proposal becomes due after eight
+weeks and remains due until measured, so skipped or failed runs cannot lose it. `outcome`
+mode remains available for manual backfills; it does not need a separate schedule.
+
+A standalone task starts a new chat every run, which is what you want for method reflection.
 
 Before scheduling anything, run the prompt manually in a normal chat until the output is
 reliable. That is the documented workflow, and it avoids scheduling a prompt that misfires

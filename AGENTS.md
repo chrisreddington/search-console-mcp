@@ -59,6 +59,7 @@ src/auth.ts           OAuth2 client construction and access-token refresh.
 src/auth-cli.ts       `npm run auth` — loopback OAuth authorization flow.
 src/token-store.ts    Atomic 0600 token persistence.
 src/google-client.ts  Search Console HTTP calls, pagination, error sanitisation.
+src/analytics-compare.ts  Two-window acquisition, local aggregation, join, filter/sort, session cache.
 src/server.ts         MCP tool registration and stdio entrypoint.
 src/*.test.ts         Tests live next to the module they cover. There is no test/ directory.
 bin/search-console-mcp  Self-locating POSIX wrapper every host launches.
@@ -93,7 +94,9 @@ Constraints behind that split:
   replace the default scan or trigger an ignored-folder warning.
 - Claude Code also puts `bin/` on the Bash tool's `PATH` when the plugin is enabled.
 
-Keep `version` in both manifests in step with `package.json`.
+Keep `version` in both manifests in step with `package.json`, `package-lock.json`, the
+`McpServer` version in `src/server.ts`, and the client version in `src/one-password.ts`.
+A stale literal there shows up as the wrong identity in a host's tool list.
 
 `codex plugin add` copies the plugin into a version-keyed cache
 (`~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/`), including `dist/` and
@@ -160,6 +163,12 @@ grant. Do not "fix" this back to saving on every change.
   not tear down the session.
 - Never let a credential, token, raw file body, or secret-CLI stdout reach an error
   message; see the `handling-secrets` skill.
+- Retrieval belongs in the server; judgement belongs in `skills/`. `gsc_compare_search_analytics`
+  filters and sorts over metric fields and knows nothing about opportunity classes. Keep it
+  that way — a threshold named after a content class is a skill change wearing a tool costume.
+- The acquisition cache key in `analytics-compare.ts` covers every input Google sees, and
+  nothing else. Adding a post-retrieval concern (metric filter, sort, limit) to it splits the
+  cache and silently restores the duplicate-request problem it exists to remove.
 - Add or update tests when behavior changes; prefer table-driven cases.
 - Keep changes scoped; avoid unrelated refactors.
 - Paths are POSIX-only by design (`bin/search-console-mcp` is a `/bin/sh` script, and

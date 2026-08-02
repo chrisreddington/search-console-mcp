@@ -13,9 +13,11 @@ Use the bundled `search-console` MCP tools. Keep all operations read-only.
 2. Establish the latest finalized date with a small `gsc_query_search_analytics` request grouped by `date` before comparing periods.
 3. Query totals without `page` or `query` dimensions, then query the dimensions needed for diagnosis. Do not add every dimension reflexively.
 4. Use `allPages: true` only when row-level analysis needs it. Set a deliberate `maxRows`; the default ceiling is 25,000.
-5. Compare equal-length periods and distinguish impression growth, ranking movement, and CTR changes. Treat average CTR as a query-mix metric, not a site-quality score.
-6. Use `gsc_inspect_url` for Google's indexed status and canonical selection. State clearly that it is not a live inspection and does not request indexing.
-7. Use `gsc_list_sitemaps` to assess submitted sitemap state, not to infer that every discovered URL is canonical or indexed.
+5. Compare two periods with `gsc_compare_search_analytics` rather than two separate queries. It union-joins both windows for one grain, returns `current`, `prior`, and `delta` per row, and filters, sorts, and limits **after** retrieval, so repeat analyses of one grain cost no further API requests. Leave `retrievalMode` at `range` unless a grain has actually shown truncation: it costs two requests per grain, and its metrics are Google's own. Escalate to `daily` only when `coverage.rowCapReached` was true for that grain, or a range-versus-daily comparison shows the two disagreeing — `daily` costs 56 requests per grain and, on a property that fits inside the ceilings, returns identical data.
+6. Read the `coverage` block of every comparison before describing the result. `rowCapReached: false` is not evidence of completeness.
+7. Compare equal-length periods and distinguish impression growth, ranking movement, and CTR changes. Treat average CTR as a query-mix metric, not a site-quality score.
+8. Use `gsc_inspect_url` for Google's indexed status and canonical selection. State clearly that it is not a live inspection and does not request indexing.
+9. Use `gsc_list_sitemaps` to assess submitted sitemap state, not to infer that every discovered URL is canonical or indexed.
 
 Read [limitations.md](references/limitations.md) before interpreting detailed or exhaustive-looking query results.
 
@@ -49,4 +51,5 @@ If tools report that no token exists, direct the user to run `npm run auth` from
 - Include date ranges, search type, dimensions, and important filters.
 - Label partial/fresh data and privacy-related omissions.
 - Avoid claiming that the API bypasses Search Console anonymization or row limits.
+- Never call a retrieval complete. Say what was examined and cite the coverage that supports it.
 - Separate evidence from recommendations and avoid promising traffic gains.

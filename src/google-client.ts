@@ -2,8 +2,29 @@ import type { OAuth2Client } from "google-auth-library";
 import { accessToken } from "./auth.js";
 import type { TokenStore } from "./token-store.js";
 
+export type SearchAnalyticsDimension =
+  | "country"
+  | "date"
+  | "device"
+  | "hour"
+  | "page"
+  | "query"
+  | "searchAppearance";
+
+export type SearchAnalyticsFilterDimension = Exclude<
+  SearchAnalyticsDimension,
+  "date" | "hour"
+>;
+
+export type SearchAnalyticsType =
+  "discover" | "googleNews" | "image" | "news" | "video" | "web";
+
+export type SearchAnalyticsAggregationType = "auto" | "byPage" | "byProperty";
+
+export type SearchAnalyticsDataState = "all" | "final" | "hourly_all";
+
 export interface SearchAnalyticsFilter {
-  dimension: "country" | "device" | "page" | "query" | "searchAppearance";
+  dimension: SearchAnalyticsFilterDimension;
   operator?:
     | "contains"
     | "equals"
@@ -18,22 +39,11 @@ export interface SearchAnalyticsQuery {
   siteUrl: string;
   startDate: string;
   endDate: string;
-  dimensions?:
-    | Array<
-        | "country"
-        | "date"
-        | "device"
-        | "hour"
-        | "page"
-        | "query"
-        | "searchAppearance"
-      >
-    | undefined;
-  filters?: SearchAnalyticsFilter[] | undefined;
-  type?:
-    "discover" | "googleNews" | "image" | "news" | "video" | "web" | undefined;
-  aggregationType?: "auto" | "byPage" | "byProperty" | undefined;
-  dataState?: "all" | "final" | "hourly_all" | undefined;
+  dimensions?: readonly SearchAnalyticsDimension[] | undefined;
+  filters?: readonly SearchAnalyticsFilter[] | undefined;
+  type?: SearchAnalyticsType | undefined;
+  aggregationType?: SearchAnalyticsAggregationType | undefined;
+  dataState?: SearchAnalyticsDataState | undefined;
   pageSize?: number | undefined;
   startRow?: number | undefined;
   allPages?: boolean | undefined;
