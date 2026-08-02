@@ -19,9 +19,29 @@ Use the bundled `search-console` MCP tools. Keep all operations read-only.
 
 Read [limitations.md](references/limitations.md) before interpreting detailed or exhaustive-looking query results.
 
+## When a tool fails for want of credentials
+
+The server reads credentials from wherever `GSC_SECRET_PROVIDER` points; it never runs a
+CLI and never needs a value passed to it. Its errors name the exact thing to fix, so read
+them before acting.
+
+If an error says a dotenv file is missing, that path is a 1Password Environment mount and
+it is not currently there — almost always because 1Password is locked, or restarted without
+remounting. Recover it without asking the user:
+
+1. Use the 1Password MCP server to list local env files for the Environment.
+2. If the mount is absent, recreate it at the same path the error named.
+3. Retry the original tool call once.
+
+Only report a block if that fails, and say which cause it was.
+
+Never ask the user to paste a credential, and never write one through a tool call —
+`append_variables` takes the value as an argument, which would place the secret in your
+context. Values are added in the 1Password app by the user.
+
 ## Authentication
 
-If tools report that no token exists, direct the user to configure `GSC_OAUTH_CLIENT_FILE` with an external OAuth Desktop client file and optionally `GSC_TOKEN_FILE`, then run `npm run auth` from the plugin source. Never request, display, log, paste, or copy credential/token contents. The OAuth scope is fixed to `webmasters.readonly` and token files are written with private permissions.
+If tools report that no token exists, direct the user to run `npm run auth` from the plugin source. Authorization is interactive and needs a browser, so never attempt it yourself. Never request, display, log, paste, or copy credential/token contents. The OAuth scope is fixed to `webmasters.readonly` and token files are written with private permissions.
 
 ## Reporting
 

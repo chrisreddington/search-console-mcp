@@ -9,7 +9,9 @@
         "GSC_OAUTH_CLIENT_FILE",
         "GSC_CLIENT_ID",
         "GSC_CLIENT_SECRET",
-        "GSC_TOKEN_FILE"
+        "GSC_TOKEN_PROVIDER",
+        "GSC_TOKEN_FILE",
+        "GSC_TOKEN_DOTENV_PATH"
       ]
     }
   }

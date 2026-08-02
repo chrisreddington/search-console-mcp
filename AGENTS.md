@@ -129,11 +129,17 @@ locks rather than being requested per process.
 
 ## Token storage
 
-The token goes to `GSC_TOKEN_FILE` via `FileTokenStore`: atomic write, mode `0600`, inside
-a `0700` directory.
+`GSC_TOKEN_PROVIDER` selects the backend: `file` (default, atomic `0600` write) or
+`dotenv`, which reads `GSC_REFRESH_TOKEN` from the same mount as the client credentials so
+the whole grant lives in one 1Password Environment and never touches disk.
 
-It is a file rather than a vault entry because it must be **written** as well as read —
-Google can rotate the refresh token, and a read-only store cannot accept the replacement.
+The `dotenv` store cannot write, because a mount serves reads only. That is acceptable
+because Google does not rotate desktop-client refresh tokens on each refresh; when a
+rotation does happen the server warns and the value is updated by hand.
+
+`npm run auth` always writes to `GSC_TOKEN_FILE` regardless of the provider — authorization
+needs somewhere writable to put a new grant, and moving it into the vault is a deliberate
+manual step so the value never passes through an agent.
 
 `accessToken()` persists **only when the refresh token rotates**, never on an access-token
 refresh. Google issues a new access token roughly hourly; saving then produced a write on

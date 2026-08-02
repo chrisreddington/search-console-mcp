@@ -4,14 +4,19 @@ import { platform } from "node:os";
 import { spawn } from "node:child_process";
 import { OAuth2Client } from "google-auth-library";
 import { READONLY_SCOPE } from "./auth.js";
+import { resolveTokenFile } from "./config.js";
 import { resolveClientCredentials } from "./secrets.js";
-import { createTokenStore } from "./token-store.js";
+import { FileTokenStore } from "./token-store.js";
 
 const CALLBACK_PATH = "/oauth2/callback";
 const AUTHORIZATION_TIMEOUT_MS = 5 * 60 * 1_000;
 
 async function authorize(): Promise<void> {
-  const tokenStore = createTokenStore();
+  // Always write to a file, whatever the server reads at runtime. A vault mount
+  // serves reads only, so authorization needs somewhere it can actually put the
+  // new grant; moving it into the vault afterwards is a deliberate manual step.
+  const tokenFile = resolveTokenFile();
+  const tokenStore = new FileTokenStore(tokenFile);
   const credentials = await resolveClientCredentials();
   const state = randomBytes(24).toString("hex");
   const callback = await createCallback(state);
@@ -43,8 +48,20 @@ async function authorize(): Promise<void> {
 
   await tokenStore.save(tokens);
   process.stderr.write(
-    `Authorization succeeded. Token stored in ${tokenStore.description}.\n`,
+    `Authorization succeeded. Token written to ${tokenFile}.\n`,
   );
+
+  if (process.env.GSC_TOKEN_PROVIDER?.trim().toLowerCase() === "dotenv") {
+    // The server will read GSC_REFRESH_TOKEN from the mount, not this file, so
+    // say plainly that the job is not finished.
+    process.stderr.write(
+      `\nGSC_TOKEN_PROVIDER is "dotenv", so the server reads GSC_REFRESH_TOKEN from your Environment, not that file. To finish:\n` +
+        `  1. Copy the "refresh_token" value out of ${tokenFile}\n` +
+        `  2. Add it to the Environment as GSC_REFRESH_TOKEN, in the 1Password app\n` +
+        `  3. Delete ${tokenFile}\n` +
+        `Do step 2 in the app rather than through an agent: writing it via a tool call would put the token in the agent's context.\n`,
+    );
+  }
 }
 
 interface Callback {
