@@ -139,6 +139,11 @@ Constraints that shaped the 1Password backend:
   overwritten and removed in a `finally`. Tests assert the staging file never survives,
   including on failure, and that the token never appears in argv.
 - `CommandRunner` intentionally takes no stdin parameter; nothing can use it.
+- `accessToken()` persists **only when the refresh token rotates**, never on an
+  access-token refresh. Google issues a new access token roughly hourly; writing then
+  meant an hourly vault write, and a vault write needs an approval that a background or
+  scheduled run cannot answer. The access token is a cache worth one round trip; the
+  refresh token is the grant. Do not "fix" this back to saving on every change.
 
 ## GUI hosts and PATH
 
