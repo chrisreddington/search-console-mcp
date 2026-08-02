@@ -56,15 +56,18 @@ That copy is a snapshot, including `dist/` and `node_modules/`. Editing the chec
 not change what Codex runs. To ship a change:
 
 ```sh
+npm version patch                                # bumps package.json and both manifests together
 npm run build                                    # cache copies dist/, so build first
-# bump "version" in .codex-plugin/plugin.json (the cachebuster)
 "$CODEX" plugin add search-console-mcp@personal  # re-copies into a new cache dir
 ```
 
-Keep `version` in step across `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`,
-`package.json`, and `package-lock.json`. Two literals in the source carry it too, and a
-stale one shows up as the wrong identity in a client's tool list: the `McpServer` version
-in `src/server.ts`, and the client version in `src/one-password.ts`.
+`npm version <patch|minor|major>` is the cachebuster. It updates `package.json` and
+`package-lock.json`, then `scripts/sync-plugin-versions.mjs` (wired to npm's `version`
+lifecycle) copies the new version into `.codex-plugin/plugin.json` and
+`.claude-plugin/plugin.json` and stages them, so a single command keeps every manifest, the
+`McpServer` identity in `src/server.ts`, and the 1Password client identity in
+`src/one-password.ts` in step — the latter two import `PACKAGE_VERSION` rather than
+hardcoding it. Do not hand-edit `version` in either plugin manifest.
 
 ## Scheduled tasks
 
@@ -75,6 +78,11 @@ prompts below stay one line each; all the logic lives in
 Create these from the **Scheduled** page in the ChatGPT desktop app. Set project to your
 content repo and run in your **local environment**, not a worktree — the run needs your
 real environment for `op` (1Password) and for ledger writes.
+
+Before scheduling anything, publish the OAuth client to production (see
+[Authorising](../README.md#authorising) in the README) — a client left in Testing status has
+its refresh token revoked after 7 days, which silently breaks the weekly task mid-cycle with
+no error visible until the next scheduled run fails.
 
 | Task              | Cadence   | Create it                   | Prompt                                                                                     |
 | ----------------- | --------- | --------------------------- | ------------------------------------------------------------------------------------------ |

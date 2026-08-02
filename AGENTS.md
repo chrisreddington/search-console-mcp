@@ -60,11 +60,13 @@ src/auth-cli.ts       `npm run auth` — loopback OAuth authorization flow.
 src/token-store.ts    Atomic 0600 token persistence.
 src/google-client.ts  Search Console HTTP calls, pagination, error sanitisation.
 src/analytics-compare.ts  Two-window acquisition, local aggregation, join, filter/sort, session cache.
+src/package-version.ts  The only place that reads package.json's version.
 src/server.ts         MCP tool registration and stdio entrypoint.
 src/*.test.ts         Tests live next to the module they cover. There is no test/ directory.
 bin/search-console-mcp  Self-locating POSIX wrapper every host launches.
 skills/search-console/        Product skill: how to query Search Console safely.
 skills/content-opportunities/ Product skill: the weekly content loop (propose/outcome/reflect).
+scripts/sync-plugin-versions.mjs  `npm version`'s lifecycle hook; see Distribution targets below.
 docs/codex-setup.md           Codex install, cachebuster flow, and scheduled tasks.
 .agent/skills/        Agent skills for working on this repo. Not shipped.
 ```
@@ -94,9 +96,14 @@ Constraints behind that split:
   replace the default scan or trigger an ignored-folder warning.
 - Claude Code also puts `bin/` on the Bash tool's `PATH` when the plugin is enabled.
 
-Keep `version` in both manifests in step with `package.json`, `package-lock.json`, the
-`McpServer` version in `src/server.ts`, and the client version in `src/one-password.ts`.
-A stale literal there shows up as the wrong identity in a host's tool list.
+`package.json` is the single source of truth for `version`. Everything else derives from
+it: `src/server.ts` and `src/one-password.ts` import `PACKAGE_VERSION` from
+`src/package-version.ts` rather than hardcoding it, so the `McpServer` and 1Password client
+identities can never drift from the package. Bump with `npm version <patch|minor|major>` —
+npm updates `package.json` and `package-lock.json`, then its `version` lifecycle script
+(`scripts/sync-plugin-versions.mjs`) copies the new version into both plugin manifests and
+stages them, so one command keeps every location in step. Do not hand-edit `version` in
+either plugin manifest; the next bump overwrites it, and a hand-edit in between drifts.
 
 `codex plugin add` copies the plugin into a version-keyed cache
 (`~/.codex/plugins/cache/<marketplace>/<plugin>/<version>/`), including `dist/` and

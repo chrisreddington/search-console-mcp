@@ -20,7 +20,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "npm run build && node --test dist/src/*.test.js"
+    "test": "npm run build && node --test dist/src/*.test.js",
+    "version": "node scripts/sync-plugin-versions.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.0",

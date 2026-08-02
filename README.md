@@ -137,6 +137,26 @@ message saying exactly that.
 browser, so this step is interactive by nature and is a command you run, not something an
 agent can complete for you.
 
+### How often you need to re-run it
+
+This is set by your OAuth client's **Publishing status** in Google Cloud Console
+(APIs & Services → OAuth consent screen), not by anything in this repo:
+
+- **Testing** (the default for a new client) — Google revokes the refresh token after
+  **7 days**, regardless of use. A weekly scheduled task will silently start failing
+  mid-week if it lands on day 8. This is Google's behaviour for every "External" testing
+  app, not something the server can work around.
+- **In production** — the refresh token has no fixed expiry. It only stops working if it
+  goes unused for 6 months, you revoke it, your Google Account password changes, or the
+  Google Account exceeds its refresh-token limit for the client.
+
+For a single-user read-only tool like this one, publish to production directly from the
+consent screen; you do **not** need to submit for Google's verification review just to get
+past the 7-day limit. Google will show a one-time "Google hasn't verified this app" warning
+during `npm run auth` — click through it (Advanced → Go to \<app name\> (unsafe)) — and the
+resulting refresh token is then long-lived. Re-run `npm run auth` only if you see the
+rotation warning below, or if the server reports an `invalid_grant` error.
+
 Set `GSC_TOKEN_OP_ENVIRONMENT` to a 1Password Environment name and the refresh token is
 written straight into that Environment over stdio — from the CLI process to 1Password,
 never through a file and never through an agent's context:
@@ -193,6 +213,55 @@ widens the row budget at the cost of locally derived metrics; `"range"` (the def
 Google aggregate the window. Do not mix figures from the two. Every response carries a
 `coverage` block: `rowCapReached: true` proves truncation, but `false` does not prove
 completeness, because Search Analytics returns click-sorted top rows with no true total.
+
+## Running this as a weekly, self-improving content loop
+
+The server is one half of the product; [`skills/content-opportunities/`](skills/content-opportunities/)
+is the other. Point it at a content repo and it turns Search Console evidence into a small,
+disciplined loop instead of a one-off report:
+
+```
+propose (weekly)  →  human accepts/rejects  →  ship  →  measure outcome (8+ weeks later)  →
+                                                            ↓
+                                        reflect (quarterly): which classes actually win?
+                                                            ↓
+                                          PR against this skill, cited with real numbers
+```
+
+Every weekly `propose` run does two things in one pass: it sweeps for any accepted proposal
+that shipped 8+ weeks ago and has no measured outcome yet, then proposes up to 3 new items.
+There is no separate outcome schedule to remember — a skipped or failed week just leaves the
+item due for the next one. `reflect` closes the loop quarterly by mining the ledger for
+which opportunity classes actually convert into wins, and proposes edits to the skill's own
+thresholds, cited with the numbers that justify them.
+
+**Where the learning actually lives**, so a consolidation memory or a stale prompt can't
+quietly erode it — two tiers, on purpose:
+
+- **Taste → your agent host's memory.** In-chat corrections ("stop proposing Azure", "I
+  care about agent tooling more than DevOps") belong here. Memory is _meant_ to consolidate
+  and reword over time, which is right for preferences and wrong for facts.
+- **Facts → the ledger**, three JSONL/Markdown files the skill reads and writes in the
+  content repo at `.agents/content-loop/`: proposal IDs, verdicts and reasons
+  (`proposals.jsonl`), measured deltas (`outcomes.jsonl`), and your hand-maintained focus
+  areas, anti-topics and discovery patterns (`topics.md`). These need to stay exact and
+  diffable, so they live in git next to the content, not in a system that rewords them.
+
+To set it up in a content repo:
+
+1. Create `.agents/content-loop/topics.md` by hand — focus areas, anti-topics (optionally
+   scoped to specific opportunity classes), and `## Discovery patterns` regexes for query
+   clusters. The skill runs without it, but degrades to unfiltered and says so.
+2. Let the skill create `proposals.jsonl` and `outcomes.jsonl` on first run; the exact shape
+   of every row is in [ledger-schema.md](skills/content-opportunities/references/ledger-schema.md).
+3. Schedule `propose` weekly and `reflect` quarterly. For Codex specifically — including the
+   task prompts, the local-environment requirement, and why the weekly task must live inside
+   one continuing chat — see [docs/codex-setup.md](docs/codex-setup.md#scheduled-tasks).
+
+The method itself — modes, evidence recipes, the acceptance handoff, the rules that keep
+proposals falsifiable — is documented once, in
+[skills/content-opportunities/SKILL.md](skills/content-opportunities/SKILL.md); this section
+is only the operational shape of the loop.
 
 ## Development
 

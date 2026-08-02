@@ -1,5 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { PACKAGE_VERSION } from "./package-version.js";
 
 const DEFAULT_MCP_COMMAND =
   "/Applications/1Password.app/Contents/MacOS/onepassword-mcp";
@@ -79,7 +80,7 @@ export async function connectToOnePassword(
 ): Promise<EnvironmentWriter> {
   const client = new Client({
     name: "search-console-mcp",
-    version: "0.10.0",
+    version: PACKAGE_VERSION,
   });
 
   try {

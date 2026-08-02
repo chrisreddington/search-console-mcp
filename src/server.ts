@@ -13,6 +13,7 @@ import {
 import { createAuthorizedClient } from "./auth.js";
 
 import { SearchConsoleClient } from "./google-client.js";
+import { PACKAGE_VERSION } from "./package-version.js";
 import { resolveClientCredentials } from "./secrets.js";
 import { createTokenStore } from "./token-store.js";
 
@@ -47,8 +48,26 @@ const metricFilter = z.object({
   value: z.number(),
 });
 
+// Shared by gsc_query_search_analytics and gsc_compare_search_analytics, which
+// both retrieve from the same Search Analytics API and so share its shape.
+const searchFilter = z.object({
+  dimension: filterDimension,
+  operator: filterOperator.default("equals"),
+  expression: z.string().min(1).max(4096),
+});
+const analyticsType = z
+  .enum(["discover", "googleNews", "image", "news", "video", "web"])
+  .default("web");
+const aggregationType = z
+  .enum(["auto", "byPage", "byProperty"])
+  .default("auto");
+const dataState = z.enum(["all", "final", "hourly_all"]).default("final");
+
 export function createServer(client: SearchConsoleClient): McpServer {
-  const server = new McpServer({ name: "search-console", version: "0.10.0" });
+  const server = new McpServer({
+    name: "search-console",
+    version: PACKAGE_VERSION,
+  });
   // One comparer per server, so its acquisition cache lives as long as the session.
   const comparer = createComparer(client);
   const readOnlyAnnotations = {
@@ -84,22 +103,10 @@ export function createServer(client: SearchConsoleClient): McpServer {
         startDate: isoDate("Inclusive start date in America/Los_Angeles time."),
         endDate: isoDate("Inclusive end date in America/Los_Angeles time."),
         dimensions: z.array(dimension).max(7).optional(),
-        filters: z
-          .array(
-            z.object({
-              dimension: filterDimension,
-              operator: filterOperator.default("equals"),
-              expression: z.string().min(1).max(4096),
-            }),
-          )
-          .optional(),
-        type: z
-          .enum(["discover", "googleNews", "image", "news", "video", "web"])
-          .default("web"),
-        aggregationType: z
-          .enum(["auto", "byPage", "byProperty"])
-          .default("auto"),
-        dataState: z.enum(["all", "final", "hourly_all"]).default("final"),
+        filters: z.array(searchFilter).optional(),
+        type: analyticsType,
+        aggregationType,
+        dataState,
         pageSize: z.number().int().min(1).max(25_000).default(1_000),
         startRow: z.number().int().min(0).default(0),
         allPages: z.boolean().default(false),
@@ -139,25 +146,15 @@ export function createServer(client: SearchConsoleClient): McpServer {
               "cannot appear in both windows.",
           ),
         filters: z
-          .array(
-            z.object({
-              dimension: filterDimension,
-              operator: filterOperator.default("equals"),
-              expression: z.string().min(1).max(4096),
-            }),
-          )
+          .array(searchFilter)
           .optional()
           .describe(
             "API-side dimension filters. These narrow what Google returns, so they change " +
               "the retrieval rather than the post-retrieval selection.",
           ),
-        type: z
-          .enum(["discover", "googleNews", "image", "news", "video", "web"])
-          .default("web"),
-        aggregationType: z
-          .enum(["auto", "byPage", "byProperty"])
-          .default("auto"),
-        dataState: z.enum(["all", "final", "hourly_all"]).default("final"),
+        type: analyticsType,
+        aggregationType,
+        dataState,
         retrievalMode: z
           .enum(RETRIEVAL_MODES)
           .default("range")
