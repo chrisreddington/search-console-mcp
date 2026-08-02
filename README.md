@@ -130,6 +130,31 @@ processes a minimal environment.
 If the mount is missing — usually because 1Password is locked — startup fails with a
 message saying exactly that.
 
+## Authorising
+
+`npm run auth` runs the OAuth flow. Google requires a human to approve consent in a
+browser, so this step is interactive by nature and is a command you run, not something an
+agent can complete for you.
+
+Set `GSC_TOKEN_OP_ENVIRONMENT` to a 1Password Environment name and the refresh token is
+written straight into that Environment over stdio — from the CLI process to 1Password,
+never through a file and never through an agent's context:
+
+```sh
+export GSC_TOKEN_OP_ENVIRONMENT=search-console-mcp
+npm run auth
+```
+
+The variable appears as `GSC_REFRESH_TOKEN` in the Environment, and therefore in the
+mounted `.env` the server reads.
+
+1Password's MCP server can add a variable but not replace one, so re-authorising means
+deleting `GSC_REFRESH_TOKEN` in the 1Password app first. The command says so rather than
+failing obscurely.
+
+Leave `GSC_TOKEN_OP_ENVIRONMENT` unset and the token is written to `GSC_TOKEN_FILE`
+instead.
+
 ## Where the token is stored
 
 Authorisation produces a refresh token, which is the credential that actually grants access

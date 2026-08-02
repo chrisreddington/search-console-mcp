@@ -5,16 +5,18 @@ import { spawn } from "node:child_process";
 import { OAuth2Client } from "google-auth-library";
 import { READONLY_SCOPE } from "./auth.js";
 import { resolveTokenFile } from "./config.js";
+import { connectToOnePassword, storeVariable } from "./one-password.js";
 import { resolveClientCredentials } from "./secrets.js";
 import { FileTokenStore } from "./token-store.js";
 
 const CALLBACK_PATH = "/oauth2/callback";
+const REFRESH_TOKEN_VARIABLE = "GSC_REFRESH_TOKEN";
 const AUTHORIZATION_TIMEOUT_MS = 5 * 60 * 1_000;
 
 async function authorize(): Promise<void> {
-  // Always write to a file, whatever the server reads at runtime. A vault mount
-  // serves reads only, so authorization needs somewhere it can actually put the
-  // new grant; moving it into the vault afterwards is a deliberate manual step.
+  // With an Environment configured the grant goes straight there and never
+  // touches disk. Without one it falls back to a private file.
+  const environmentName = process.env.GSC_TOKEN_OP_ENVIRONMENT?.trim();
   const tokenFile = resolveTokenFile();
   const tokenStore = new FileTokenStore(tokenFile);
   const credentials = await resolveClientCredentials();
@@ -46,22 +48,30 @@ async function authorize(): Promise<void> {
     );
   }
 
+  if (environmentName) {
+    // Straight into the Environment over stdio, so the grant never lands on
+    // disk. The value goes from this process to 1Password; no agent sees it.
+    const writer = await connectToOnePassword();
+    try {
+      await storeVariable(
+        writer,
+        environmentName,
+        REFRESH_TOKEN_VARIABLE,
+        tokens.refresh_token,
+      );
+    } finally {
+      await writer.close();
+    }
+    process.stderr.write(
+      `Authorization succeeded. ${REFRESH_TOKEN_VARIABLE} written to the "${environmentName}" Environment; it will appear in the mounted .env.\n`,
+    );
+    return;
+  }
+
   await tokenStore.save(tokens);
   process.stderr.write(
     `Authorization succeeded. Token written to ${tokenFile}.\n`,
   );
-
-  if (process.env.GSC_TOKEN_PROVIDER?.trim().toLowerCase() === "dotenv") {
-    // The server will read GSC_REFRESH_TOKEN from the mount, not this file, so
-    // say plainly that the job is not finished.
-    process.stderr.write(
-      `\nGSC_TOKEN_PROVIDER is "dotenv", so the server reads GSC_REFRESH_TOKEN from your Environment, not that file. To finish:\n` +
-        `  1. Copy the "refresh_token" value out of ${tokenFile}\n` +
-        `  2. Add it to the Environment as GSC_REFRESH_TOKEN, in the 1Password app\n` +
-        `  3. Delete ${tokenFile}\n` +
-        `Do step 2 in the app rather than through an agent: writing it via a tool call would put the token in the agent's context.\n`,
-    );
-  }
 }
 
 interface Callback {

@@ -137,9 +137,15 @@ The `dotenv` store cannot write, because a mount serves reads only. That is acce
 because Google does not rotate desktop-client refresh tokens on each refresh; when a
 rotation does happen the server warns and the value is updated by hand.
 
-`npm run auth` always writes to `GSC_TOKEN_FILE` regardless of the provider — authorization
-needs somewhere writable to put a new grant, and moving it into the vault is a deliberate
-manual step so the value never passes through an agent.
+`npm run auth` writes the new grant into the 1Password Environment named by
+`GSC_TOKEN_OP_ENVIRONMENT`, by acting as an MCP client of the local 1Password server. The
+value goes from that process to 1Password over stdio, so it reaches neither disk nor a
+model's context. Without that variable it falls back to `GSC_TOKEN_FILE`.
+
+That dependency belongs to the CLI alone. `npm run auth` is interactive and
+terminal-launched, which is the one context where 1Password will authorise a caller. The
+server must stay free of it: it runs unattended under a GUI host that cannot answer an
+approval prompt.
 
 `accessToken()` persists **only when the refresh token rotates**, never on an access-token
 refresh. Google issues a new access token roughly hourly; saving then produced a write on
