@@ -18,11 +18,11 @@ Keep OAuth client secrets and refresh tokens out of the repository, out of logs,
 ## Rules
 
 - Resolve credentials only through `resolveClientCredentials()` in `src/secrets.ts`. No other module reads `GSC_CLIENT_SECRET` or parses the client file.
+- The server runs no external CLI. Credentials arrive by reading a path or an environment variable. Do not add a provider that shells out: a GUI-launched host gives its children a minimal environment, so any CLI dependency fails only once the app launches the server, not when you test from a terminal.
 - Fail closed: an unknown provider, a backend error, or an empty/placeholder value aborts startup. Never fall back to a weaker provider automatically.
 - Validate resolved values before use, and reject obvious template text (`your-`, `changeme`, `example`, …) so a copied sample fails at startup rather than at the first Google call.
 - Error messages may name environment variables, file paths, and CLI names. They must never include a credential value, a token, a raw file body, or the stdout of a secret CLI — those can echo the secret back.
 - Write token files atomically with mode `0600` inside a `0700` directory (`FileTokenStore`), and re-`chmod` after reads that may have loosened it.
-- Never hand a secret to a CLI as a command argument; argv is readable by any local process. Stage it in a `0600` file and pass the path, removing the file in a `finally`.
 - Request the narrowest scope: authorization is fixed to `webmasters.readonly`. Adding a write scope needs an explicit decision, not a convenience change.
 - Sample files (`.env.example`, `README.md`, `.mcp.json`) carry placeholders only. Keep credential globs in `.gitignore` covering any new filename you introduce.
 - Never write a secret to the repository working tree, including in tests. Tests use obvious fakes and OS temp directories.
@@ -30,7 +30,7 @@ Keep OAuth client secrets and refresh tokens out of the repository, out of logs,
 ## Adding a new secret backend
 
 1. Add the name to `SECRET_PROVIDERS` in `src/secrets.ts` — the union type derives from it.
-2. Implement `from<Backend>(environment, runCommand | readTextFile)`; take every side effect through an injected seam so it is testable.
+2. Implement `from<Backend>(environment, readTextFile)`; take every side effect through an injected seam so it is testable.
 3. Add a `case` to the switch and a `remedy()` branch telling the user exactly how to store the values.
 4. Add table-driven tests for success, backend failure, and missing-value cases.
 5. Document the backend in the provider table in `AGENTS.md` and `README.md`, and add its env vars to `.env.example`.

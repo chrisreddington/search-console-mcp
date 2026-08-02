@@ -5,16 +5,11 @@
       "cwd": ".",
       "env_vars": [
         "GSC_SECRET_PROVIDER",
+        "GSC_SECRET_DOTENV_PATH",
         "GSC_OAUTH_CLIENT_FILE",
-        "GSC_TOKEN_FILE",
         "GSC_CLIENT_ID",
         "GSC_CLIENT_SECRET",
-        "GSC_SECRET_DOTENV_PATH",
-        "GSC_SECRET_OP_VAULT",
-        "GSC_SECRET_OP_ITEM",
-        "GSC_TOKEN_PROVIDER",
-        "GSC_TOKEN_OP_VAULT",
-        "GSC_TOKEN_OP_ITEM"
+        "GSC_TOKEN_FILE"
       ]
     }
   }

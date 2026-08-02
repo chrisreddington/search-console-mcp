@@ -1,22 +1,7 @@
 import { readFile } from "node:fs/promises";
-import { platform } from "node:os";
 import { expandPath } from "./config.js";
-import {
-  CommandNotFoundError,
-  runCommand as defaultCommandRunner,
-  type CommandRunner,
-} from "./run-command.js";
 
-export type { CommandRunner };
-
-export const SECRET_PROVIDERS = [
-  "file",
-  "env",
-  "dotenv",
-  "1password",
-  "keychain",
-  "doppler",
-] as const;
+export const SECRET_PROVIDERS = ["file", "env", "dotenv"] as const;
 
 export type SecretProvider = (typeof SECRET_PROVIDERS)[number];
 
@@ -27,12 +12,8 @@ export interface OAuthClientCredentials {
 
 export interface SecretResolutionOptions {
   environment?: NodeJS.ProcessEnv;
-  runCommand?: CommandRunner;
   readTextFile?: (path: string) => Promise<string>;
 }
-
-/** Service name used for OS keychain entries. */
-const KEYCHAIN_SERVICE = "search-console-mcp";
 
 /**
  * Resolve the Google OAuth Desktop client id and secret from the backend named
@@ -44,7 +25,6 @@ export async function resolveClientCredentials(
   options: SecretResolutionOptions = {},
 ): Promise<OAuthClientCredentials> {
   const environment = options.environment ?? process.env;
-  const runCommand = options.runCommand ?? defaultCommandRunner;
   const readTextFile = options.readTextFile ?? defaultTextFileReader;
   const provider = readProvider(environment);
 
@@ -58,15 +38,6 @@ export async function resolveClientCredentials(
       break;
     case "dotenv":
       credentials = await fromDotenv(environment, readTextFile);
-      break;
-    case "1password":
-      credentials = await fromOnePassword(environment, runCommand);
-      break;
-    case "keychain":
-      credentials = await fromKeychain(runCommand);
-      break;
-    case "doppler":
-      credentials = await fromDoppler(runCommand);
       break;
   }
 
@@ -140,6 +111,11 @@ function fromEnvironment(
   };
 }
 
+/**
+ * Reads a dotenv file, which is how credentials arrive from a 1Password
+ * Environment: the app mounts a `.env` backed by a named pipe, so the values are
+ * served on read and never written to disk.
+ */
 async function fromDotenv(
   environment: NodeJS.ProcessEnv,
   readTextFile: (path: string) => Promise<string>,
@@ -155,7 +131,9 @@ async function fromDotenv(
     contents = await readTextFile(path);
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") {
-      throw new Error(`No dotenv file exists at ${path}.`);
+      throw new Error(
+        `No dotenv file exists at ${path}. If this is a 1Password Environment mount, it is missing — remount it, and check that 1Password is unlocked.`,
+      );
     }
     throw new Error(`Cannot read the dotenv file at ${path}.`);
   }
@@ -167,122 +145,7 @@ async function fromDotenv(
   };
 }
 
-interface OnePasswordItem {
-  fields?: Array<{ label?: unknown; value?: unknown }>;
-}
-
-async function fromOnePassword(
-  environment: NodeJS.ProcessEnv,
-  runCommand: CommandRunner,
-): Promise<OAuthClientCredentials> {
-  const vault = environment.GSC_SECRET_OP_VAULT;
-  const item = environment.GSC_SECRET_OP_ITEM;
-  if (!vault || !item) {
-    throw new Error(
-      "GSC_SECRET_OP_VAULT and GSC_SECRET_OP_ITEM must both be set when using the 1password provider.",
-    );
-  }
-
-  // The runner deliberately discards op's output, which can contain field
-  // values, so name the vault and item here instead — neither is secret, and
-  // without them a typo is indistinguishable from a locked vault.
-  let output: string;
-  try {
-    output = await runCommand("op", [
-      "item",
-      "get",
-      "--vault",
-      vault,
-      "--format",
-      "json",
-      item,
-    ]);
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : "unknown error";
-    // A missing CLI is a different problem from a vault that will not answer;
-    // appending item advice to a "not found" error sends people the wrong way.
-    if (error instanceof CommandNotFoundError) throw new Error(reason);
-    throw new Error(
-      `${reason} Check that item "${item}" exists in vault "${vault}", that 1Password is unlocked, and that its CLI integration is enabled (Settings > Developer > Integrate with 1Password CLI). A background or scheduled run cannot answer an approval prompt, so authorise 1Password once interactively first.`,
-    );
-  }
-
-  let parsed: OnePasswordItem;
-  try {
-    parsed = JSON.parse(output) as OnePasswordItem;
-  } catch {
-    throw new Error(`Could not parse the 1Password item "${item}".`);
-  }
-
-  const fields = new Map<string, string>();
-  for (const field of parsed.fields ?? []) {
-    if (typeof field.label === "string" && typeof field.value === "string") {
-      fields.set(field.label.trim().toLowerCase(), field.value.trim());
-    }
-  }
-
-  return {
-    clientId: fields.get("client_id") ?? "",
-    clientSecret: fields.get("client_secret") ?? "",
-  };
-}
-
-async function fromKeychain(
-  runCommand: CommandRunner,
-): Promise<OAuthClientCredentials> {
-  return {
-    clientId: await keychainValue(runCommand, "GSC_CLIENT_ID"),
-    clientSecret: await keychainValue(runCommand, "GSC_CLIENT_SECRET"),
-  };
-}
-
-async function keychainValue(
-  runCommand: CommandRunner,
-  key: string,
-): Promise<string> {
-  const current = platform();
-  if (current === "darwin") {
-    return runCommand("security", [
-      "find-generic-password",
-      "-s",
-      KEYCHAIN_SERVICE,
-      "-a",
-      key,
-      "-w",
-    ]).then((value) => value.trim());
-  }
-  if (current === "linux") {
-    return runCommand("secret-tool", [
-      "lookup",
-      "service",
-      KEYCHAIN_SERVICE,
-      "account",
-      key,
-    ]).then((value) => value.trim());
-  }
-  throw new Error(
-    `The keychain provider supports macOS and Linux only (this host reports "${current}"). Use the 1password, doppler, or file provider instead.`,
-  );
-}
-
-async function fromDoppler(
-  runCommand: CommandRunner,
-): Promise<OAuthClientCredentials> {
-  const output = await runCommand("doppler", [
-    "secrets",
-    "download",
-    "--no-file",
-    "--format",
-    "env",
-  ]);
-  const values = parseEnvText(output);
-  return {
-    clientId: values.get("GSC_CLIENT_ID") ?? "",
-    clientSecret: values.get("GSC_CLIENT_SECRET") ?? "",
-  };
-}
-
-/** Parse KEY=VALUE lines emitted by dotenv files and `doppler secrets download`. */
+/** Parse KEY=VALUE lines from a dotenv file. */
 export function parseEnvText(contents: string): Map<string, string> {
   const values = new Map<string, string>();
   for (const line of contents.split("\n")) {
@@ -355,13 +218,7 @@ function remedy(provider: SecretProvider): string {
     case "env":
       return "Set GSC_CLIENT_ID and GSC_CLIENT_SECRET.";
     case "dotenv":
-      return "Set GSC_CLIENT_ID and GSC_CLIENT_SECRET in the dotenv file.";
-    case "1password":
-      return `Add "client_id" and "client_secret" fields to the 1Password item.`;
-    case "keychain":
-      return `Store both values under service "${KEYCHAIN_SERVICE}" with accounts GSC_CLIENT_ID and GSC_CLIENT_SECRET.`;
-    case "doppler":
-      return "Add GSC_CLIENT_ID and GSC_CLIENT_SECRET to the Doppler config.";
+      return "Set GSC_CLIENT_ID and GSC_CLIENT_SECRET in the dotenv file. For a 1Password Environment, check both variables have values.";
   }
 }
 

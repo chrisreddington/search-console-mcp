@@ -29,8 +29,8 @@ npm run build
 
 `npm run auth` opens a browser, uses a loopback callback, and also prints the
 authorization URL to stderr so it works over SSH. It never prints credential or token
-contents, and stores the resulting token through whichever backend
-[`GSC_TOKEN_PROVIDER`](#where-the-token-is-stored) names — by default a `0600` file.
+contents, and writes the token to [`GSC_TOKEN_FILE`](#where-the-token-is-stored) with
+mode `0600`.
 
 The clone must stay on disk and stay built — every host below launches the same
 self-locating `bin/search-console-mcp` wrapper out of this directory. Re-run
@@ -94,71 +94,56 @@ expands.
 
 ## Supplying credentials
 
-The server never reads credentials out of `.mcp.json`. Set `GSC_SECRET_PROVIDER` to
-choose where the OAuth client id and secret come from:
+`GSC_SECRET_PROVIDER` chooses where the OAuth client id and secret come from:
 
-| `GSC_SECRET_PROVIDER` | Required configuration                                                                              |
-| --------------------- | --------------------------------------------------------------------------------------------------- |
-| `file` (default)      | `GSC_OAUTH_CLIENT_FILE` — path to the Desktop client JSON from Google Cloud console                 |
-| `env`                 | `GSC_CLIENT_ID`, `GSC_CLIENT_SECRET`                                                                |
-| `dotenv`              | `GSC_SECRET_DOTENV_PATH` (default `.env`) holding `GSC_CLIENT_ID` and `GSC_CLIENT_SECRET`           |
-| `1password`           | `op` on PATH, `GSC_SECRET_OP_VAULT`, `GSC_SECRET_OP_ITEM`; item exposes `client_id`/`client_secret` |
-| `keychain`            | macOS `security` or Linux `secret-tool`, service `search-console-mcp`                               |
-| `doppler`             | `doppler` on PATH, with `GSC_CLIENT_ID` and `GSC_CLIENT_SECRET` in the active config                |
+| `GSC_SECRET_PROVIDER` | Required configuration                                                      |
+| --------------------- | --------------------------------------------------------------------------- |
+| `file` (default)      | `GSC_OAUTH_CLIENT_FILE` — the Desktop client JSON from Google Cloud console |
+| `env`                 | `GSC_CLIENT_ID`, `GSC_CLIENT_SECRET`                                        |
+| `dotenv`              | `GSC_SECRET_DOTENV_PATH` holding `GSC_CLIENT_ID` and `GSC_CLIENT_SECRET`    |
 
-Resolution fails closed. An unknown provider, a backend error, or a value that is empty
-or still a template placeholder (`your-…`, `changeme`, …) aborts startup with an
-actionable message instead of failing later against the Google API. Error messages name
-the variable, path, or CLI to fix — never the credential itself.
+Resolution fails closed. An unknown provider, a missing file, or a value that is empty or
+still a template placeholder (`your-…`, `changeme`, …) aborts startup with an actionable
+message instead of failing later against the Google API. Error messages name the variable,
+path, or file to fix — never the credential itself.
 
-See [.env.example](.env.example) for every variable, including the exact `security` and
-`secret-tool` commands for storing keychain entries.
+### Recommended: 1Password Environments
+
+Store the credentials in a [1Password Environment](https://developer.1password.com/docs/environments/local-env-file/)
+and have 1Password mount a local `.env` for them. The mount is backed by a named pipe, so
+values are served on read and **never written to disk**, and authorisation lasts until
+1Password locks rather than being requested per process.
+
+1. In 1Password, create an Environment with `GSC_CLIENT_ID` and `GSC_CLIENT_SECRET`.
+2. Mount a local `.env` file for it, for example at `~/.config/search-console-mcp/`.
+3. Point the server at the mount:
+
+```sh
+export GSC_SECRET_PROVIDER=dotenv
+export GSC_SECRET_DOTENV_PATH=~/.config/search-console-mcp/.env
+```
+
+The server only ever reads that path. It runs no external CLI, so it works unchanged when
+launched by a GUI host such as the Codex or Claude desktop apps, which give their child
+processes a minimal environment.
+
+If the mount is missing — usually because 1Password is locked — startup fails with a
+message saying exactly that.
 
 ## Where the token is stored
 
-Authorization produces a refresh token, and that token — not the client secret — is
-the thing that actually grants access to your data. `GSC_TOKEN_PROVIDER` chooses where
-it lives:
+Authorisation produces a refresh token, which is the credential that actually grants access
+to your data. It is written to `GSC_TOKEN_FILE` (default
+`~/.config/search-console-mcp/token.json`) atomically, with mode `0600` inside a `0700`
+directory.
 
-| `GSC_TOKEN_PROVIDER` | Storage                                         | Protection                        |
-| -------------------- | ----------------------------------------------- | --------------------------------- |
-| `file` (default)     | `GSC_TOKEN_FILE`, atomic write, mode `0600`     | Filesystem permissions only       |
-| `1password`          | A vault document, written and read through `op` | Vault encryption, unlock required |
+It lives in a file rather than a vault because it must be **written** as well as read:
+Google can rotate the refresh token, and a store that only serves reads cannot accept the
+replacement. The server writes it only when that rotation happens, not on the routine
+hourly access-token refresh.
 
-For the `1password` backend set `GSC_TOKEN_OP_ITEM` (default `Search Console Token`);
-the vault falls back to `GSC_SECRET_OP_VAULT`, so the common case needs no extra
-variable.
-
-```sh
-export GSC_TOKEN_PROVIDER=1password
-```
-
-Two honest caveats about the 1Password backend. `op` rejects a document body on stdin
-when it is spawned rather than shell-piped, so the token is staged in a `0600` file
-inside a `0700` temporary directory, passed to `op` by path, then overwritten and
-deleted — it touches the disk briefly, and on a copy-on-write filesystem that overwrite
-is best-effort. And every read and refresh needs the vault unlocked, so a locked
-1Password makes the server fail to start rather than fall back.
-
-`GSC_TOKEN_FILE` is a location rather than a secret; it defaults to
-`~/.config/search-console-mcp/token.json`.
-
-Deleting a stored token does not revoke anything. To actually revoke access, remove the
-app grant at [myaccount.google.com/permissions](https://myaccount.google.com/permissions).
-
-### Examples
-
-```sh
-# 1Password
-export GSC_SECRET_PROVIDER=1password
-export GSC_SECRET_OP_VAULT=Private
-export GSC_SECRET_OP_ITEM='Search Console'
-
-# macOS Keychain
-security add-generic-password -s search-console-mcp -a GSC_CLIENT_ID -w '<client id>'
-security add-generic-password -s search-console-mcp -a GSC_CLIENT_SECRET -w '<client secret>'
-export GSC_SECRET_PROVIDER=keychain
-```
+Deleting the token file does not revoke anything. To revoke access, remove the app grant at
+[myaccount.google.com/permissions](https://myaccount.google.com/permissions).
 
 ## Tools
 

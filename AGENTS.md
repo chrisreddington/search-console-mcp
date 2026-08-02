@@ -105,62 +105,40 @@ loads the marketplace but silently hides the plugin.
 
 ## Secret providers
 
-The server never takes credentials from `.mcp.json` directly. Set `GSC_SECRET_PROVIDER`
-to choose where the OAuth Desktop client id and secret come from:
+`GSC_SECRET_PROVIDER` chooses where the OAuth client id and secret come from:
 
-| Value       | How it resolves the client id and secret                                     |
-| ----------- | ---------------------------------------------------------------------------- |
-| `file`      | Reads the `installed` block of the JSON at `GSC_OAUTH_CLIENT_FILE` (default) |
-| `env`       | `GSC_CLIENT_ID` and `GSC_CLIENT_SECRET` directly                             |
-| `dotenv`    | Parses the file at `GSC_SECRET_DOTENV_PATH` (default `.env`)                 |
-| `1password` | Shells out to `op`; uses `GSC_SECRET_OP_VAULT` + `GSC_SECRET_OP_ITEM`        |
-| `keychain`  | macOS `security` / Linux `secret-tool`, service `search-console-mcp`         |
-| `doppler`   | Shells out to `doppler secrets download --no-file --format env`              |
+| Value            | How it resolves them                                         |
+| ---------------- | ------------------------------------------------------------ |
+| `file` (default) | The `installed` block of the JSON at `GSC_OAUTH_CLIENT_FILE` |
+| `env`            | `GSC_CLIENT_ID` and `GSC_CLIENT_SECRET` directly             |
+| `dotenv`         | Parses the file at `GSC_SECRET_DOTENV_PATH`                  |
 
-Resolution fails closed: an unknown provider, a backend error, or an empty or
-placeholder value aborts startup. There is no silent fallback to a weaker provider.
+Resolution fails closed: an unknown provider, a missing file, or an empty or placeholder
+value aborts startup. There is no silent fallback to a weaker provider.
 
-`GSC_TOKEN_FILE` (default `~/.config/search-console-mcp/token.json`) is a _location_, not
-a secret, and is safe to name in error messages.
+**The server runs no external CLI.** Credentials arrive by reading a path or an environment
+variable, nothing more. Keep it that way: a GUI-launched host gives its children a minimal
+environment, and any dependency on a CLI being present, on `PATH`, or on a per-process
+authorisation is a failure that only appears once the server is launched by the app rather
+than from a terminal.
+
+1Password is supported through this route: create an Environment, have the app mount a
+local `.env` for it, and point `GSC_SECRET_DOTENV_PATH` at the mount. The mount is backed
+by a named pipe, so nothing is written to disk, and authorisation lasts until 1Password
+locks rather than being requested per process.
 
 ## Token storage
 
-`GSC_TOKEN_PROVIDER` selects the `TokenStore` implementation: `file` (default, atomic
-`0600` write) or `1password` (a vault document via `op`). The refresh token is the real
-access grant, so it deserves at least the protection given to the client secret.
+The token goes to `GSC_TOKEN_FILE` via `FileTokenStore`: atomic write, mode `0600`, inside
+a `0700` directory.
 
-Constraints that shaped the 1Password backend:
+It is a file rather than a vault entry because it must be **written** as well as read —
+Google can rotate the refresh token, and a read-only store cannot accept the replacement.
 
-- `op` probes stdin at startup and fails with "expected data on stdin but none found"
-  when spawned rather than shell-piped, so a document body cannot be piped from Node.
-- Passing the token as a command argument is not an option — arguments are readable by
-  any local process.
-- Hence a `0600` staging file in a `0700` temp directory, passed by path, then
-  overwritten and removed in a `finally`. Tests assert the staging file never survives,
-  including on failure, and that the token never appears in argv.
-- `CommandRunner` intentionally takes no stdin parameter; nothing can use it.
-- `accessToken()` persists **only when the refresh token rotates**, never on an
-  access-token refresh. Google issues a new access token roughly hourly; writing then
-  meant an hourly vault write, and a vault write needs an approval that a background or
-  scheduled run cannot answer. The access token is a cache worth one round trip; the
-  refresh token is the grant. Do not "fix" this back to saving on every change.
-
-## GUI hosts and PATH
-
-A GUI-launched host (Codex.app, Claude Desktop, Finder) never sources a shell profile, so
-its child processes inherit a minimal `PATH` — typically `/usr/bin:/bin:/usr/sbin:/sbin`.
-Homebrew's `bin` is absent, which makes `node`, `op`, and `doppler` all invisible. The
-symptom is a server that works from a terminal and fails only under the app.
-
-Both layers therefore resolve binaries themselves rather than trusting `PATH`:
-
-- `bin/search-console-mcp` locates `node` via PATH, then Homebrew, MacPorts, `~/.local/bin`,
-  Volta and nvm.
-- `src/run-command.ts` locates secret CLIs the same way and raises `CommandNotFoundError`,
-  which names every directory searched.
-
-Do not "simplify" either back to a bare `PATH` lookup. Fixing the user's shell profile does
-not help: the app is not a shell.
+`accessToken()` persists **only when the refresh token rotates**, never on an access-token
+refresh. Google issues a new access token roughly hourly; saving then produced a write on
+every session. The access token is a cache worth one round trip; the refresh token is the
+grant. Do not "fix" this back to saving on every change.
 
 ## Engineering expectations
 

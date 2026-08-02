@@ -55,31 +55,6 @@ const successCases: ProviderCase[] = [
         `# Google\nGSC_CLIENT_ID="${CLIENT_ID}"\nGSC_CLIENT_SECRET='${CLIENT_SECRET}'\n`,
     },
   },
-  {
-    name: "1password provider reads labelled item fields",
-    options: {
-      environment: {
-        GSC_SECRET_PROVIDER: "1password",
-        GSC_SECRET_OP_VAULT: "Private",
-        GSC_SECRET_OP_ITEM: "Search Console",
-      },
-      runCommand: async () =>
-        JSON.stringify({
-          fields: [
-            { label: "client_id", value: CLIENT_ID },
-            { label: "client_secret", value: CLIENT_SECRET },
-          ],
-        }),
-    },
-  },
-  {
-    name: "doppler provider parses downloaded env output",
-    options: {
-      environment: { GSC_SECRET_PROVIDER: "doppler" },
-      runCommand: async () =>
-        `GSC_CLIENT_ID="${CLIENT_ID}"\nGSC_CLIENT_SECRET="${CLIENT_SECRET}"\n`,
-    },
-  },
 ];
 
 for (const testCase of successCases) {
@@ -146,43 +121,16 @@ const failureCases: FailureCase[] = [
     expected: /client secret is empty or a placeholder/,
   },
   {
-    name: "requires vault and item for the 1password provider",
-    options: { environment: { GSC_SECRET_PROVIDER: "1password" } },
-    expected: /GSC_SECRET_OP_VAULT and GSC_SECRET_OP_ITEM must both be set/,
-  },
-  {
-    name: "reports a 1password item without the expected fields",
+    // The common real failure: 1Password is locked, so the mount is not there.
+    name: "points at the mount when the dotenv file is absent",
     options: {
       environment: {
-        GSC_SECRET_PROVIDER: "1password",
-        GSC_SECRET_OP_VAULT: "Private",
-        GSC_SECRET_OP_ITEM: "Search Console",
+        GSC_SECRET_PROVIDER: "dotenv",
+        GSC_SECRET_DOTENV_PATH: "/mnt/gsc/.env",
       },
-      runCommand: async () => JSON.stringify({ fields: [] }),
+      readTextFile: async () => missingFile(),
     },
-    expected: /Add "client_id" and "client_secret" fields/,
-  },
-  {
-    name: "names the vault and item when the op CLI fails",
-    options: {
-      environment: {
-        GSC_SECRET_PROVIDER: "1password",
-        GSC_SECRET_OP_VAULT: "Private",
-        GSC_SECRET_OP_ITEM: "Search Console",
-      },
-      runCommand: async () => {
-        throw new Error('The "op" CLI exited with an error.');
-      },
-    },
-    expected: /item "Search Console" exists in vault "Private"/,
-  },
-  {
-    name: "reports a doppler config missing the credentials",
-    options: {
-      environment: { GSC_SECRET_PROVIDER: "doppler" },
-      runCommand: async () => "OTHER_SECRET=value\n",
-    },
-    expected: /Add GSC_CLIENT_ID and GSC_CLIENT_SECRET to the Doppler config/,
+    expected: /1Password Environment mount, it is missing/,
   },
 ];
 
