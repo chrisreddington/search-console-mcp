@@ -94,6 +94,18 @@ Constraints behind that split:
   Claude-shaped root file with the unexpanded `${CLAUDE_PLUGIN_ROOT}` placeholder that Codex
   never fills in. Inlining the server config sidesteps that collision entirely rather than
   routing around it with a second file.
+- Pointing `mcpServers` at any other path (`./.codex-plugin/mcp.json`, say) does not merely
+  fail validation — Codex's ingestion drops the MCP server while still loading `skills/`,
+  because `skills` is independently valid. The plugin then looks installed and its skills
+  appear, but no `gsc_*` tool ever attaches. That asymmetry is the signature of this bug; if
+  the skills are listed but the tools are missing, suspect the manifest before the server.
+- Per Codex's plugin spec, `skills`, `hooks`, and a **string-valued** `mcpServers` are
+  _supplemented on top of_ default component discovery rather than replacing it. The root
+  `.mcp.json` is copied into the Codex plugin cache along with everything else, so a
+  string-valued `mcpServers` risks Codex also registering the Claude entry and its literal
+  `${CLAUDE_PLUGIN_ROOT}` command. The inline object currently wins and only one correct
+  server registers — verify with `codex mcp list` after any manifest change that exactly one
+  `search-console` appears and no `CLAUDE_PLUGIN_ROOT` string leaks into it.
 - `.claude-plugin/plugin.json` deliberately declares neither `skills` nor `mcpServers`:
   Claude Code auto-discovers `skills/` and root `.mcp.json`, and naming them would either
   replace the default scan or trigger an ignored-folder warning.

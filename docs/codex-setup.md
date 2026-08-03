@@ -59,6 +59,7 @@ not change what Codex runs. To ship a change:
 npm version patch                                # bumps package.json and both manifests together
 npm run build                                    # cache copies dist/, so build first
 "$CODEX" plugin add search-console-mcp@personal  # re-copies into a new cache dir
+# then fully quit and relaunch the Codex desktop app — see below
 ```
 
 `npm version <patch|minor|major>` is the cachebuster. It updates `package.json` and
@@ -68,6 +69,29 @@ lifecycle) copies the new version into `.codex-plugin/plugin.json` and
 `McpServer` identity in `src/server.ts`, and the 1Password client identity in
 `src/one-password.ts` in step — the latter two import `PACKAGE_VERSION` rather than
 hardcoding it. Do not hand-edit `version` in either plugin manifest.
+
+A real release bump is the right cachebuster **here** because this plugin is also a versioned
+npm project. Codex's own `plugin-creator` guidance instead prescribes a build-metadata suffix
+(`<base-version>+codex.<timestamp>`, applied by its `update_plugin_cachebuster.py`) and says
+not to increment numeric version components merely to force a reinstall. Both produce a new
+version-keyed cache directory; prefer the suffix for throwaway local iteration, and a genuine
+`npm version` bump for anything you intend to ship.
+
+### Restarting the desktop app is part of the update
+
+A new thread is **not** enough. The desktop app resolves the plugin catalogue once at launch
+and holds it in memory, so after `codex plugin add` a still-running app keeps serving the
+previous version — pointing skills at a cache directory the reinstall has already deleted,
+and attaching whatever MCP config that stale version declared. The symptom is a fresh thread
+whose skills load but whose `gsc_*` tools are missing, with the skill paths naming an old
+version. Fully quit and relaunch the app, then start a new thread.
+
+Confirm what the running app actually resolved, rather than assuming:
+
+```sh
+"$CODEX" plugin list | grep search-console   # installed version and source path
+"$CODEX" mcp list | grep search-console      # exactly one entry, cwd in the current cache dir
+```
 
 ## Scheduled tasks
 
