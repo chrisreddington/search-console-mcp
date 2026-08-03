@@ -45,10 +45,10 @@ The same server and skill work in three ways. Pick one.
 ### Codex plugin
 
 The repository is a Codex plugin as-is: `.codex-plugin/plugin.json` declares the skill in
-`skills/` and points at `.codex-plugin/mcp.json` for the server. Add the plugin from a
-local path with your normal Codex plugin workflow — no other configuration is needed.
+`skills/` and the server in its own `mcpServers` object. Add the plugin from a local path
+with your normal Codex plugin workflow — no other configuration is needed.
 
-Codex passes credentials through the `env_vars` allowlist in `.codex-plugin/mcp.json`, so
+Codex passes credentials through the `env_vars` allowlist in that `mcpServers` entry, so
 any `GSC_*` variable exported in your shell reaches the server. Add the variable name
 there if you introduce a new one.
 

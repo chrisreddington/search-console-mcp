@@ -73,14 +73,14 @@ docs/codex-setup.md           Codex install, cachebuster flow, and scheduled tas
 
 ## Distribution targets
 
-One server, three install paths. Each host owns its own MCP config file so no host sees
+One server, three install paths. Each host owns its own MCP config so no host sees
 another's keys — do not merge them back into one file.
 
-| Host               | Manifest                     | MCP config               | Launch path                               |
-| ------------------ | ---------------------------- | ------------------------ | ----------------------------------------- |
-| Codex plugin       | `.codex-plugin/plugin.json`  | `.codex-plugin/mcp.json` | relative `command` + `cwd` (plugin root)  |
-| Claude Code plugin | `.claude-plugin/plugin.json` | `.mcp.json` (root)       | `${CLAUDE_PLUGIN_ROOT}` placeholder       |
-| Plain MCP client   | none                         | the user's own config    | absolute path to `bin/search-console-mcp` |
+| Host               | Manifest                     | MCP config                              | Launch path                               |
+| ------------------ | ---------------------------- | --------------------------------------- | ----------------------------------------- |
+| Codex plugin       | `.codex-plugin/plugin.json`  | inline `mcpServers` object in that file | relative `command` + `cwd` (plugin root)  |
+| Claude Code plugin | `.claude-plugin/plugin.json` | `.mcp.json` (root)                      | `${CLAUDE_PLUGIN_ROOT}` placeholder       |
+| Plain MCP client   | none                         | the user's own config                   | absolute path to `bin/search-console-mcp` |
 
 Constraints behind that split:
 
@@ -88,13 +88,19 @@ Constraints behind that split:
   Codex passes it through as a literal string, so a shared file breaks one host or the other.
 - Codex resolves a relative `cwd` against the plugin root but does **not** resolve a
   relative `command`; the relative command only works because `cwd` is set.
-- A string-valued `mcpServers` in the Codex manifest _replaces_ default `.mcp.json`
-  discovery, which is why pointing it at `.codex-plugin/mcp.json` keeps Codex away from
-  the Claude-shaped root file.
+- Codex's `mcpServers` is declared as an **object directly in `.codex-plugin/plugin.json`**,
+  not a companion file. A string-valued `mcpServers` there must resolve to `.mcp.json` at
+  plugin root — Codex's own plugin validator enforces this — which is exactly the
+  Claude-shaped root file with the unexpanded `${CLAUDE_PLUGIN_ROOT}` placeholder that Codex
+  never fills in. Inlining the server config sidesteps that collision entirely rather than
+  routing around it with a second file.
 - `.claude-plugin/plugin.json` deliberately declares neither `skills` nor `mcpServers`:
   Claude Code auto-discovers `skills/` and root `.mcp.json`, and naming them would either
   replace the default scan or trigger an ignored-folder warning.
 - Claude Code also puts `bin/` on the Bash tool's `PATH` when the plugin is enabled.
+- Validate the Codex manifest with
+  `python3 ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py .` (needs
+  `pyyaml`) before shipping a change to `.codex-plugin/plugin.json` or `skills/`.
 
 `package.json` is the single source of truth for `version`. Everything else derives from
 it: `src/server.ts` and `src/one-password.ts` import `PACKAGE_VERSION` from

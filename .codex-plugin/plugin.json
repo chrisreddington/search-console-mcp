@@ -19,7 +19,27 @@
     "defaultPrompt": [
       "Analyze my Search Console performance and recommend priorities.",
       "Inspect a URL and explain its indexing status."
-    ]
+    ],
+    "brandColor": "#1A73E8",
+    "composerIcon": "./assets/icon.svg",
+    "logo": "./assets/icon.svg",
+    "logoDark": "./assets/icon-dark.svg",
+    "screenshots": []
   },
-  "mcpServers": "./.codex-plugin/mcp.json"
+  "mcpServers": {
+    "search-console": {
+      "command": "./bin/search-console-mcp",
+      "cwd": ".",
+      "env_vars": [
+        "GSC_SECRET_PROVIDER",
+        "GSC_SECRET_DOTENV_PATH",
+        "GSC_OAUTH_CLIENT_FILE",
+        "GSC_CLIENT_ID",
+        "GSC_CLIENT_SECRET",
+        "GSC_TOKEN_PROVIDER",
+        "GSC_TOKEN_FILE",
+        "GSC_TOKEN_DOTENV_PATH"
+      ]
+    }
+  }
 }
