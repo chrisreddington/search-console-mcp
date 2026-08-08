@@ -153,15 +153,13 @@ async function listenOnLoopback(server: Server): Promise<number> {
   return address.port;
 }
 
+// Windows is not a supported host (see AGENTS.md); a cmd.exe /c start
+// invocation would also misparse the URL's own "&"-separated query params
+// as command separators, so there is no safe win32 case to add here.
 function browserCommand(url: string): { executable: string; args: string[] } {
-  switch (platform()) {
-    case "darwin":
-      return { executable: "open", args: [url] };
-    case "win32":
-      return { executable: "cmd", args: ["/c", "start", "", url] };
-    default:
-      return { executable: "xdg-open", args: [url] };
-  }
+  return platform() === "darwin"
+    ? { executable: "open", args: [url] }
+    : { executable: "xdg-open", args: [url] };
 }
 
 function openBrowser(url: string): void {

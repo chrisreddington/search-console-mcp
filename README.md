@@ -20,6 +20,11 @@ operation. Authorization requests only
 
 ## Setup
 
+The quickstart below uses a client file on disk, since it needs no prior setup. For
+day-to-day use, [1Password Environments](#recommended-1password-environments) is the
+preferred way to supply credentials — see [Supplying credentials](#supplying-credentials)
+before you settle on one.
+
 ```sh
 npm ci
 export GSC_OAUTH_CLIENT_FILE=/absolute/path/to/oauth-desktop-client.json
@@ -95,28 +100,24 @@ expands.
 
 ## Supplying credentials
 
-`GSC_SECRET_PROVIDER` chooses where the OAuth client id and secret come from:
-
-| `GSC_SECRET_PROVIDER` | Required configuration                                                      |
-| --------------------- | --------------------------------------------------------------------------- |
-| `file` (default)      | `GSC_OAUTH_CLIENT_FILE` — the Desktop client JSON from Google Cloud console |
-| `env`                 | `GSC_CLIENT_ID`, `GSC_CLIENT_SECRET`                                        |
-| `dotenv`              | `GSC_SECRET_DOTENV_PATH` holding `GSC_CLIENT_ID` and `GSC_CLIENT_SECRET`    |
-
-Resolution fails closed. An unknown provider, a missing file, or a value that is empty or
-still a template placeholder (`your-…`, `changeme`, …) aborts startup with an actionable
-message instead of failing later against the Google API. Error messages name the variable,
-path, or file to fix — never the credential itself.
+`GSC_SECRET_PROVIDER` chooses where the OAuth client id and secret come from: `dotenv`
+(recommended — see below), `file`, or `env`. Resolution fails closed — an unknown
+provider, a missing file, or a value that is empty or still a template placeholder
+(`your-…`, `changeme`, …) aborts startup with an actionable message instead of failing
+later against the Google API. Error messages name the variable, path, or file to fix —
+never the credential itself.
 
 ### Recommended: 1Password Environments
 
-Store the credentials in a [1Password Environment](https://developer.1password.com/docs/environments/local-env-file/)
-and have 1Password mount a local `.env` for them. The mount is backed by a named pipe, so
-values are served on read and **never written to disk**, and authorisation lasts until
-1Password locks rather than being requested per process.
+This is the primary way the maintainer runs this server. Store the client id and secret in
+a [1Password Environment](https://developer.1password.com/docs/environments/) and have
+1Password mount a [local `.env` file](https://developer.1password.com/docs/environments/local-env-file/)
+for it, backed by a named pipe:
 
 1. In 1Password, create an Environment with `GSC_CLIENT_ID` and `GSC_CLIENT_SECRET`.
-2. Mount a local `.env` file for it, for example at `~/.config/search-console-mcp/`.
+2. Mount a local `.env` file for it, for example at `~/.config/search-console-mcp/` — see
+   [Access secrets through local .env files](https://developer.1password.com/docs/environments/local-env-file/)
+   for how the mount and its named pipe work.
 3. Point the server at the mount:
 
 ```sh
@@ -124,12 +125,69 @@ export GSC_SECRET_PROVIDER=dotenv
 export GSC_SECRET_DOTENV_PATH=~/.config/search-console-mcp/.env
 ```
 
+**Why this is preferred over a file on disk:**
+
+- **Nothing sits on disk in the clear.** The mount is a named pipe: 1Password serves the
+  value on read and never writes it out, so there's no plaintext client secret file for a
+  backup, a Time Machine snapshot, a synced `~/.config`, or a forensic disk image to pick
+  up.
+- **Access is gated by 1Password's own unlock, not just filesystem permissions.** A `0600`
+  file is only as safe as "nobody else is logged in as you right now." The mount instead
+  requires 1Password to be unlocked, so the credential stops being readable the moment you
+  lock your session, independent of whatever else has read access to your home directory.
+  See [1Password's security model](https://support.1password.com/1password-security/) for
+  what unlocking actually gates.
+- **One place to revoke.** Locking 1Password, or deleting the Environment, immediately cuts
+  off every process reading the mount; a file has to be found and deleted everywhere it was
+  copied to.
+- **The refresh token can live alongside it** (see [Authorising](#authorising)), so the
+  whole grant — client id, client secret, and refresh token — is one 1Password Environment
+  instead of scattered across a JSON file and a token file.
+
 The server only ever reads that path. It runs no external CLI, so it works unchanged when
 launched by a GUI host such as the Codex or Claude desktop apps, which give their child
 processes a minimal environment.
 
 If the mount is missing — usually because 1Password is locked — startup fails with a
 message saying exactly that.
+
+### Alternative: a file on disk
+
+```sh
+export GSC_SECRET_PROVIDER=file   # the default
+export GSC_OAUTH_CLIENT_FILE=/absolute/path/to/oauth-desktop-client.json
+```
+
+This is the quickest way to get started — no 1Password Environment to set up first — and
+it's what the [Setup](#setup) quickstart above uses. It comes with a real tradeoff, though:
+the client secret sits in **plaintext on disk, permanently**. Filesystem permissions (keep
+`GSC_OAUTH_CLIENT_FILE` outside this repository, mode `0600`) and full-disk encryption are
+the only things standing between it and anyone who gets read access to your account — a
+stolen or unlocked laptop, malware running as you, another local process, a misdirected
+backup, or a synced folder. Unlike the 1Password mount, there's no separate unlock gate: if
+your session is accessible, the file is too, and it can end up copied without you noticing
+— a backup tool or a dotfiles sync picking up `~/.config` along with everything else in it.
+
+If you use this option, never commit the file (`.gitignore` already blocks anything named
+like a credential). If the machine is ever compromised, the leaked client secret and the
+grant are two separate things to clean up: reset the client secret in
+[Google Cloud Console](https://console.cloud.google.com/apis/credentials) (APIs & Services
+→ Credentials → your OAuth client → Add Secret, then delete the old one), and revoke the
+grant at [myaccount.google.com/permissions](https://myaccount.google.com/permissions) — see
+[Where the token is stored](#where-the-token-is-stored).
+
+### Also available: environment variables directly
+
+```sh
+export GSC_SECRET_PROVIDER=env
+export GSC_CLIENT_ID=...
+export GSC_CLIENT_SECRET=...
+```
+
+Convenient for a quick local test or a CI job that already injects secrets as environment
+variables, but the least durable of the three: values live in shell history and process
+environment rather than a managed store. Prefer `dotenv` (1Password) or `file` for anything
+you'll keep using.
 
 ## Authorising
 
