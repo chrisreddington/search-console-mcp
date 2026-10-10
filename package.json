@@ -24,12 +24,12 @@
     "version": "node scripts/sync-plugin-versions.mjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.31.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
     "google-auth-library": "11.1.0",
     "zod": "4.6.5"
   },
   "devDependencies": {
-    "@types/node": "^26.6.3",
+    "@types/node": "^26.6.4",
     "prettier": "^3.9.9",
     "typescript": "^7.0.2"
   }
